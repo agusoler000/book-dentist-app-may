@@ -1,7 +1,7 @@
 
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
+  url      = "file:./dev.db"
 }
 
 generator client {
@@ -9,57 +9,60 @@ generator client {
 }
 
 model Patient {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  name          String
-  password      String?   // IMPORTANT: In a real application, store hashed passwords.
-  phone         String?
-  dob           DateTime? // Date of Birth
-  // appointments  Appointment[] // Add if Appointment model is defined
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id           String        @id @default(uuid())
+  email        String        @unique
+  name         String
+  password     String? // Should be hashed in a real application
+  phone        String?
+  dob          DateTime?
+  appointments Appointment[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
 }
 
 model Dentist {
-  id                       String    @id @default(cuid())
-  email                    String    @unique
+  id                       String        @id @default(uuid())
+  email                    String        @unique
   name                     String
-  password                 String?   // IMPORTANT: In a real application, store hashed passwords.
+  password                 String? // Should be hashed in a real application
   specialty                String
   phone                    String?
-  isAvailableForEmergency  Boolean   @default(false)
+  isAvailableForEmergency  Boolean       @default(false)
   profileImageUrl          String?
   bio                      String?
-  // appointments             Appointment[] // Add if Appointment model is defined
-  createdAt                DateTime  @default(now())
-  updatedAt                DateTime  @updatedAt
+  appointments             Appointment[]
+  createdAt                DateTime      @default(now())
+  updatedAt                DateTime      @updatedAt
 }
 
-// Basic AppointmentStatus enum, expand models as needed
+model Appointment {
+  id          String              @id @default(uuid())
+  date        DateTime
+  time        String // e.g., "10:00 AM"
+  notes       String?
+  status      AppointmentStatus   @default(SCHEDULED)
+  patient     Patient             @relation(fields: [patientId], references: [id])
+  patientId   String
+  dentist     Dentist             @relation(fields: [dentistId], references: [id])
+  dentistId   String
+  service     Service             @relation(fields: [serviceId], references: [id])
+  serviceId   String
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+}
+
+model Service {
+  id              String        @id @default(uuid())
+  name            String        @unique
+  description     String?
+  durationMinutes Int
+  appointments    Appointment[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
 enum AppointmentStatus {
   SCHEDULED
   COMPLETED
   CANCELLED
 }
-
-// To fully integrate, you would also define Appointment, Service models etc.
-// For example:
-/*
-model Appointment {
-  id           String             @id @default(cuid())
-  date         DateTime
-  time         String
-  service      String // Or link to a Service model
-  notes        String?
-  status       AppointmentStatus  @default(SCHEDULED)
-  
-  patientId    String
-  patient      Patient            @relation(fields: [patientId], references: [id])
-  
-  dentistId    String
-  dentist      Dentist            @relation(fields: [dentistId], references: [id])
-  
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
-}
-*/

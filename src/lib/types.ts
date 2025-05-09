@@ -1,11 +1,12 @@
+
 export interface Patient {
   id: string;
   name: string;
   email: string;
-  password?: string; // Optional, for form data, not stored in auth context
+  password?: string; // Optional, for form data, not stored in auth context/client
   phone?: string;
-  dob?: string; // Date of Birth ISO string e.g. "1990-01-01"
-  appointments?: Appointment[]; // Optional: list of appointments
+  dob?: string; // ISO date string e.g. "1990-01-01". Prisma: DateTime
+  // appointments are typically fetched via relation, not embedded directly unless denormalized
 }
 
 export interface Dentist {
@@ -13,25 +14,27 @@ export interface Dentist {
   name: string;
   specialty: string;
   email: string;
-  password?: string; // Optional, for form data, not stored in auth context
+  password?: string; // Optional, for form data, not stored in auth context/client
   phone?: string;
   isAvailableForEmergency: boolean;
   profileImageUrl?: string;
   bio?: string;
+  // appointments are typically fetched via relation
 }
 
 // Aligns with Prisma's AppointmentStatus enum
 export type AppointmentStatusType = "SCHEDULED" | "COMPLETED" | "CANCELLED";
 
 export interface Appointment {
-  id:string;
+  id: string;
   patientId: string;
-  patientName?: string; // Denormalized for easier display
+  patientName?: string; // Denormalized for easier display if not fetching full patient object
   dentistId: string;
-  dentistName?: string; // Denormalized for easier display
-  date: string; // ISO date string e.g. "2024-01-01" (mock data uses string, Prisma uses DateTime)
+  dentistName?: string; // Denormalized for easier display if not fetching full dentist object
+  serviceId: string; // Foreign key to Service
+  service: string; // Name of the service (denormalized or joined)
+  date: string; // ISO date string e.g. "2024-01-01". Prisma: DateTime
   time: string; // e.g., "10:00 AM"
-  service: string; // e.g., "Cleaning", "Check-up" (could be service name or ID)
   notes?: string;
   status: AppointmentStatusType;
 }
@@ -43,6 +46,9 @@ export interface Service {
   description?: string;
 }
 
-// For auth context
-export type AuthenticatedUser = Omit<Patient, 'password' | 'appointments'> | Omit<Dentist, 'password' | 'appointments'>;
+// For auth context - remove password and relational fields that aren't directly stored
+export type AuthenticatedUser = 
+  | Omit<Patient, 'password' | 'appointments'> 
+  | Omit<Dentist, 'password' | 'appointments'>;
+
 export type UserType = 'patient' | 'dentist';

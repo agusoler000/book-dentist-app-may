@@ -1,92 +1,81 @@
+
 import type { Patient, Dentist, Appointment, Service, AppointmentStatusType } from './types';
+import { parseISO, format } from 'date-fns';
+
+
+// These mock objects can be used for frontend components if direct DB access isn't set up yet,
+// or for default/fallback values. With a seeded DB, these might become less critical.
 
 export const mockPatients: Patient[] = [
   {
-    id: 'patient-1',
-    name: 'Alice Wonderland',
-    email: 'alice@example.com',
+    id: 'patient-1-mock',
+    name: 'Alice Wonderland (Mock)',
+    email: 'alice.mock@example.com',
     phone: '555-0101',
-    dob: '1990-05-15',
+    // dob is a string in type, Prisma uses DateTime. Convert if using with Prisma types directly.
+    dob: format(new Date('1990-05-15'), 'yyyy-MM-dd'), 
   },
   {
-    id: 'patient-2',
-    name: 'Bob The Builder',
-    email: 'bob@example.com',
+    id: 'patient-2-mock',
+    name: 'Bob The Builder (Mock)',
+    email: 'bob.mock@example.com',
     phone: '555-0102',
-    dob: '1985-11-20',
+    dob: format(new Date('1985-11-20'), 'yyyy-MM-dd'),
   },
 ];
 
 export const mockDentists: Dentist[] = [
   {
-    id: 'dentist-1',
-    name: 'Dr. Eve Toothaker',
+    id: 'dentist-1-mock',
+    name: 'Dr. Eve Toothaker (Mock)',
     specialty: 'General Dentistry',
-    email: 'dr.eve@dentalflow.com',
+    email: 'dr.eve.mock@dentalflow.com',
     isAvailableForEmergency: true,
-    profileImageUrl: 'https://picsum.photos/seed/dentist1/200/200',
-    bio: 'Experienced general dentist with a passion for preventative care.',
+    profileImageUrl: 'https://picsum.photos/seed/dentist1mock/200/200',
+    bio: 'Mock: Experienced general dentist.',
   },
   {
-    id: 'dentist-2',
-    name: 'Dr. Adam Smilewright',
+    id: 'dentist-2-mock',
+    name: 'Dr. Adam Smilewright (Mock)',
     specialty: 'Orthodontics',
-    email: 'dr.adam@dentalflow.com',
+    email: 'dr.adam.mock@dentalflow.com',
     isAvailableForEmergency: false,
-    profileImageUrl: 'https://picsum.photos/seed/dentist2/200/200',
-    bio: 'Specializing in creating beautiful smiles with advanced orthodontic treatments.',
-  },
-  {
-    id: 'dentist-3',
-    name: 'Dr. Grace Periodontal',
-    specialty: 'Periodontics',
-    email: 'dr.grace@dentalflow.com',
-    isAvailableForEmergency: true,
-    profileImageUrl: 'https://picsum.photos/seed/dentist3/200/200',
-    bio: 'Focused on gum health and treating periodontal diseases.',
+    profileImageUrl: 'https://picsum.photos/seed/dentist2mock/200/200',
+    bio: 'Mock: Specializing in beautiful smiles.',
   },
 ];
 
 export const mockServices: Service[] = [
-    { id: 'service-1', name: 'Routine Check-up & Cleaning', durationMinutes: 60, description: 'Comprehensive dental check-up and professional cleaning.' },
-    { id: 'service-2', name: 'Cavity Filling', durationMinutes: 45, description: 'Restoration of a tooth damaged by decay.' },
-    { id: 'service-3', name: 'Teeth Whitening', durationMinutes: 90, description: 'Professional teeth whitening treatment for a brighter smile.' },
-    { id: 'service-4', name: 'Emergency Consultation', durationMinutes: 30, description: 'Urgent assessment of dental emergencies.' },
+    { id: 'service-1-mock', name: 'Routine Check-up & Cleaning (Mock)', durationMinutes: 60, description: 'Mock: Comprehensive dental check-up and professional cleaning.' },
+    { id: 'service-2-mock', name: 'Cavity Filling (Mock)', durationMinutes: 45, description: 'Mock: Restoration of a tooth damaged by decay.' },
+    { id: 'service-3-mock', name: 'Teeth Whitening (Mock)', durationMinutes: 90, description: 'Mock: Professional teeth whitening treatment.' },
+    { id: 'service-4-mock', name: 'Orthodontic Consultation (Mock)', durationMinutes: 45, description: 'Mock: Consultation for braces/aligners.'},
+    { id: 'service-5-mock', name: 'Emergency Consultation (Mock)', durationMinutes: 30, description: 'Mock: Urgent dental assessment.' },
 ];
 
 export const mockAppointments: Appointment[] = [
   {
-    id: 'appt-1',
-    patientId: 'patient-1',
-    patientName: 'Alice Wonderland',
-    dentistId: 'dentist-1',
-    dentistName: 'Dr. Eve Toothaker',
-    date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 2 days from now
+    id: 'appt-1-mock',
+    patientId: 'patient-1-mock',
+    patientName: 'Alice Wonderland (Mock)',
+    dentistId: 'dentist-1-mock',
+    dentistName: 'Dr. Eve Toothaker (Mock)',
+    // date is a string in type, Prisma uses DateTime. Store as ISO string.
+    date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), 
     time: '10:00 AM',
-    service: 'Routine Check-up & Cleaning',
+    service: 'Routine Check-up & Cleaning (Mock)', // service name
     status: 'SCHEDULED',
   },
   {
-    id: 'appt-2',
-    patientId: 'patient-2',
-    patientName: 'Bob The Builder',
-    dentistId: 'dentist-2',
-    dentistName: 'Dr. Adam Smilewright',
-    date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 3 days from now
+    id: 'appt-2-mock',
+    patientId: 'patient-2-mock',
+    patientName: 'Bob The Builder (Mock)',
+    dentistId: 'dentist-2-mock',
+    dentistName: 'Dr. Adam Smilewright (Mock)',
+    date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
     time: '02:30 PM',
-    service: 'Orthodontic Consultation',
+    service: 'Orthodontic Consultation (Mock)', // service name
     status: 'SCHEDULED',
-  },
-  {
-    id: 'appt-3',
-    patientId: 'patient-1',
-    patientName: 'Alice Wonderland',
-    dentistId: 'dentist-1',
-    dentistName: 'Dr. Eve Toothaker',
-    date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 5 days ago
-    time: '09:00 AM',
-    service: 'Cavity Filling',
-    status: 'COMPLETED',
   },
 ];
 
@@ -94,3 +83,12 @@ export const availableTimeSlots: string[] = [
   "09:00 AM", "09:30 AM", "10:00 AM", "10:30 AM", "11:00 AM", "11:30 AM",
   "01:00 PM", "01:30 PM", "02:00 PM", "02:30 PM", "03:00 PM", "03:30 PM", "04:00 PM"
 ];
+
+// Helper to convert mock data dates if needed, though types.ts uses string for date currently.
+// If types.ts used Date objects, this would be more relevant.
+export function ensureDateObjects(appointments: Appointment[]): Appointment[] {
+  return appointments.map(app => ({
+    ...app,
+    date: typeof app.date === 'string' ? parseISO(app.date) : app.date,
+  }));
+}
