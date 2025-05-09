@@ -1,29 +1,27 @@
+
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
+// import { Button } from '@/components/ui/button'; // Button removed as toggle is direct action
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { useAuth } from '@/context/auth-context'; // Import useAuth
+import type { AuthenticatedUser } from '@/lib/types';
 
 interface EmergencyStatusToggleProps {
-  dentistId: string;
+  dentistId: string; // remains useful for the server action
   initialStatus: boolean;
 }
 
 // Mock server action
-async function updateEmergencyStatus(dentistId: string, newStatus: boolean): Promise<{ success: boolean, message: string }> {
+async function updateEmergencyStatus(dentistId: string, newStatus: boolean): Promise<{ success: boolean, message: string, updatedStatus?: boolean }> {
   console.log(`Updating emergency status for dentist ${dentistId} to ${newStatus}`);
   // Simulate API call
   return new Promise(resolve => {
     setTimeout(() => {
-      // For demo purposes, let's occasionally simulate a failure
-      // if (Math.random() > 0.8) {
-      //   resolve({ success: false, message: "Failed to update status. Please try again." });
-      // } else {
-        resolve({ success: true, message: `Emergency availability ${newStatus ? 'activated' : 'deactivated'}.` });
-      // }
+        resolve({ success: true, message: `Emergency availability ${newStatus ? 'activated' : 'deactivated'}.`, updatedStatus: newStatus });
     }, 1000);
   });
 }
@@ -33,26 +31,34 @@ export default function EmergencyStatusToggle({ dentistId, initialStatus }: Emer
   const [isAvailable, setIsAvailable] = useState(initialStatus);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { currentUser, login, userType } = useAuth(); // Use login to update context
+
+  useEffect(() => {
+    setIsAvailable(initialStatus);
+  }, [initialStatus]);
 
   const handleToggle = async () => {
     setIsLoading(true);
     const newStatus = !isAvailable;
     
-    // Here you would typically call a server action
-    // For now, we'll use a mock function
     const result = await updateEmergencyStatus(dentistId, newStatus);
 
-    if (result.success) {
-      setIsAvailable(newStatus);
+    if (result.success && result.updatedStatus !== undefined) {
+      setIsAvailable(result.updatedStatus);
       toast({
         title: "Status Updated",
         description: result.message,
         variant: "default",
       });
+      // If there's a logged-in dentist, update their status in the AuthContext
+      if (currentUser && userType === 'dentist' && currentUser.id === dentistId) {
+        const updatedDentist = { ...currentUser, isAvailableForEmergency: result.updatedStatus } as AuthenticatedUser;
+        login(updatedDentist, 'dentist'); // Re-call login to update context and localStorage
+      }
     } else {
       toast({
         title: "Update Failed",
-        description: result.message,
+        description: result.message || "Could not update status.",
         variant: "destructive",
       });
     }
@@ -75,15 +81,11 @@ export default function EmergencyStatusToggle({ dentistId, initialStatus }: Emer
         <span className={`text-sm font-medium ${isAvailable ? 'text-green-600' : 'text-red-600'}`}>
           {isLoading ? 'Updating...' : (isAvailable ? 'Available for Emergencies' : 'Not Available for Emergencies')}
         </span>
+         {isLoading && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
       </div>
       <p className="text-xs text-muted-foreground">
         Toggle this switch to indicate whether you are currently accepting emergency appointments.
       </p>
-      {/* The Button is part of the Switch now (onCheckedChange), this is just for explicit action if needed */}
-      {/* <Button onClick={handleToggle} disabled={isLoading} size="sm">
-        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        Save Status
-      </Button> */}
     </div>
   );
 }

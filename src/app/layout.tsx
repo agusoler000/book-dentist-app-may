@@ -1,3 +1,4 @@
+
 import type { Metadata } from 'next';
 import { Inter as FontSans } from 'next/font/google'; // Using Inter as a common sans-serif
 import './globals.css';
@@ -6,6 +7,7 @@ import Navbar from '@/components/global/navbar';
 import Footer from '@/components/global/footer';
 import { Toaster } from '@/components/ui/toaster';
 import { LanguageProvider } from '@/context/language-context';
+import { AuthProvider } from '@/context/auth-context'; // Import AuthProvider
 
 const fontSans = FontSans({
   subsets: ['latin'],
@@ -32,13 +34,14 @@ export default function RootLayout({
         )}
       >
         <LanguageProvider>
-          <Navbar />
-          <main className="flex-grow container mx-auto px-4 py-8">{children}</main>
-          <Footer />
-          <Toaster />
+          <AuthProvider> {/* Wrap with AuthProvider */}
+            <Navbar />
+            <main className="flex-grow container mx-auto px-4 py-8">{children}</main>
+            <Footer />
+            <Toaster />
+          </AuthProvider>
         </LanguageProvider>
       </body>
     </html>
   );
 }
-

@@ -2,6 +2,7 @@ export interface Patient {
   id: string;
   name: string;
   email: string;
+  password?: string; // Optional, for form data, not stored in auth context
   phone?: string;
   dob?: string; // Date of Birth ISO string e.g. "1990-01-01"
   appointments?: Appointment[]; // Optional: list of appointments
@@ -12,6 +13,7 @@ export interface Dentist {
   name: string;
   specialty: string;
   email: string;
+  password?: string; // Optional, for form data, not stored in auth context
   phone?: string;
   isAvailableForEmergency: boolean;
   profileImageUrl?: string;
@@ -27,7 +29,7 @@ export interface Appointment {
   patientName?: string; // Denormalized for easier display
   dentistId: string;
   dentistName?: string; // Denormalized for easier display
-  date: string; // ISO date string e.g. "2024-01-01"
+  date: string; // ISO date string e.g. "2024-01-01" (mock data uses string, Prisma uses DateTime)
   time: string; // e.g., "10:00 AM"
   service: string; // e.g., "Cleaning", "Check-up" (could be service name or ID)
   notes?: string;
@@ -40,3 +42,7 @@ export interface Service {
   durationMinutes: number; // e.g. 30, 60
   description?: string;
 }
+
+// For auth context
+export type AuthenticatedUser = Omit<Patient, 'password' | 'appointments'> | Omit<Dentist, 'password' | 'appointments'>;
+export type UserType = 'patient' | 'dentist';

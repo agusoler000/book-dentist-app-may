@@ -1,48 +1,59 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider = "sqlite" // Or your chosen database provider
+  url      = "file:./dev.db" // Or your database URL
 }
 
 model Patient {
-  id            String        @id @default(cuid())
-  email         String        @unique
-  name          String
-  phone         String?
-  dob           DateTime?
-  appointments  Appointment[]
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  id           String        @id @default(cuid())
+  name         String
+  email        String        @unique
+  password     String // Added for authentication
+  phone        String?
+  dob          DateTime?     @map("date_of_birth")
+  appointments Appointment[]
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  @@map("patients")
 }
 
 model Dentist {
-  id                       String        @id @default(cuid())
-  email                    String        @unique
-  name                     String
-  specialty                String
-  phone                    String?
-  isAvailableForEmergency  Boolean       @default(false)
-  profileImageUrl          String?
-  bio                      String?
-  appointments             Appointment[]
-  createdAt                DateTime      @default(now())
-  updatedAt                DateTime      @updatedAt
+  id                      String        @id @default(cuid())
+  name                    String
+  email                   String        @unique
+  password                String // Added for authentication
+  specialty               String
+  phone                   String?
+  isAvailableForEmergency Boolean       @default(false)
+  profileImageUrl         String?
+  bio                     String?
+  appointments            Appointment[]
+  createdAt               DateTime      @default(now()) @map("created_at")
+  updatedAt               DateTime      @updatedAt @map("updated_at")
+
+  @@map("dentists")
 }
 
-model Service {
-  id              String        @id @default(cuid())
-  name            String
-  durationMinutes Int
-  description     String?
-  appointments    Appointment[]
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+model Appointment {
+  id          String            @id @default(cuid())
+  patientId   String
+  patient     Patient           @relation(fields: [patientId], references: [id])
+  dentistId   String
+  dentist     Dentist           @relation(fields: [dentistId], references: [id])
+  date        DateTime // Changed to DateTime for better querying
+  time        String // e.g., "10:00 AM"
+  service     String // Consider linking to a Service model if services are complex
+  notes       String?
+  status      AppointmentStatus @default(SCHEDULED)
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+
+  @@map("appointments")
 }
 
 enum AppointmentStatus {
@@ -51,26 +62,14 @@ enum AppointmentStatus {
   CANCELLED
 }
 
-model Appointment {
-  id          String            @id @default(cuid())
-  date        DateTime
-  time        String // e.g., "10:00 AM"
-  notes       String?
-  status      AppointmentStatus @default(SCHEDULED)
-  
-  patientId   String
-  patient     Patient           @relation(fields: [patientId], references: [id], onDelete: Cascade)
-  
-  dentistId   String
-  dentist     Dentist           @relation(fields: [dentistId], references: [id], onDelete: Cascade)
-  
-  serviceId   String
-  service     Service           @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+model Service {
+  id              String    @id @default(cuid())
+  name            String    @unique
+  durationMinutes Int
+  description     String?
+  // appointments    Appointment[] // If using a direct relation
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
 
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-
-  @@index([patientId])
-  @@index([dentistId])
-  @@index([serviceId])
+  @@map("services")
 }

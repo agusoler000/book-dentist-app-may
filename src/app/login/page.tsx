@@ -1,27 +1,59 @@
+
 'use client';
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { MountainIcon } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MountainIcon, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, FormEvent } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/auth-context";
+import { loginAction, type LoginInput } from "@/app/auth/actions";
+import type { UserType } from "@/lib/types";
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [accountType, setAccountType] = useState<UserType | ''>('');
+  const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const router = useRouter();
+  const auth = useAuth();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    // Mock login logic
-    console.log("Login attempt with:", { email, password });
-    toast({
-      title: "Login Submitted (Mock)",
-      description: "In a real app, this would attempt to log you in.",
-    });
+    if (!accountType) {
+      toast({ title: "Error", description: "Please select an account type.", variant: "destructive" });
+      return;
+    }
+    setIsLoading(true);
+
+    const credentials: LoginInput = { email, password, accountType };
+    const result = await loginAction(credentials);
+
+    setIsLoading(false);
+    if (result.success && result.user && result.userType) {
+      auth.login(result.user, result.userType);
+      toast({
+        title: "Login Successful",
+        description: result.message,
+      });
+      if (result.userType === 'patient') {
+        router.push('/patient/dashboard');
+      } else if (result.userType === 'dentist') {
+        router.push('/dentist/dashboard');
+      }
+    } else {
+      toast({
+        title: "Login Failed",
+        description: result.message,
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -45,6 +77,7 @@ export default function LoginPage() {
                 required 
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                disabled={isLoading}
               />
             </div>
             <div className="space-y-2">
@@ -55,10 +88,29 @@ export default function LoginPage() {
                 required 
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
               />
             </div>
-            <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90">
-              Log In
+            <div className="space-y-2">
+              <Label htmlFor="accountType">Account Type</Label>
+              <Select 
+                onValueChange={(value) => setAccountType(value as UserType)} 
+                value={accountType}
+                required
+                disabled={isLoading}
+              >
+                <SelectTrigger id="accountType">
+                  <SelectValue placeholder="Select account type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="patient">Patient</SelectItem>
+                  <SelectItem value="dentist">Dentist</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isLoading}>
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isLoading ? 'Logging In...' : 'Log In'}
             </Button>
           </form>
         </CardContent>

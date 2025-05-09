@@ -1,19 +1,39 @@
+
+'use client';
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { mockPatients, mockAppointments } from '@/lib/mock-data';
-import type { AppointmentStatusType } from '@/lib/types';
-import { CalendarCheck, UserCircle, ShieldAlert, PlusCircle, Clock } from 'lucide-react';
+import { mockAppointments, mockPatients } from '@/lib/mock-data'; // Still using mock data for appointments
+import type { AppointmentStatusType, Patient } from '@/lib/types';
+import { CalendarCheck, UserCircle, ShieldAlert, PlusCircle, Clock, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { format, parseISO, isFuture } from 'date-fns';
+import { useAuth } from '@/context/auth-context';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 export default function PatientDashboardPage() {
-  // Simulate logged-in patient
-  const currentPatient = mockPatients[0];
-  if (!currentPatient) {
-    return <p>Patient data not available. Please log in.</p>;
+  const { currentUser, userType, isLoadingAuth } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoadingAuth && (!currentUser || userType !== 'patient')) {
+      router.push('/login?role=patient');
+    }
+  }, [currentUser, userType, isLoadingAuth, router]);
+
+  if (isLoadingAuth || !currentUser || userType !== 'patient') {
+    return (
+      <div className="flex justify-center items-center min-h-[calc(100vh-20rem)]">
+        <Loader2 className="h-12 w-12 animate-spin text-accent" />
+      </div>
+    );
   }
 
-  const upcomingAppointments = mockAppointments
+  const currentPatient = currentUser as Omit<Patient, 'password' | 'appointments'>;
+
+
+  const upcomingAppointments = mockAppointments // Real app: fetch from DB for currentPatient.id
     .filter(app => app.patientId === currentPatient.id && app.status === 'SCHEDULED' && isFuture(parseISO(app.date)))
     .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
   
@@ -69,14 +89,13 @@ export default function PatientDashboardPage() {
         />
       </div>
       
-      {upcomingAppointments.length > 1 && ( // Check if there's more than just the "next" one
+      {upcomingAppointments.length > 0 && ( // Show all if any, next is already highlighted
         <Card className="shadow-md">
           <CardHeader>
             <CardTitle className="flex items-center"><Clock className="w-6 h-6 mr-2 text-accent"/>All Upcoming Appointments</CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="space-y-3">
-              {/* Display all upcoming, not just those after the "next" one */}
               {upcomingAppointments.map(app => (
                 <li key={app.id} className="p-3 border rounded-md bg-background hover:bg-muted/50 transition-colors">
                   <p className="font-semibold">{format(parseISO(app.date), 'MMMM d, yyyy')} at {app.time} - {app.service}</p>
@@ -87,6 +106,13 @@ export default function PatientDashboardPage() {
           </CardContent>
         </Card>
       )}
+       {upcomingAppointments.length === 0 && !nextAppointment && (
+         <Card className="shadow-md">
+            <CardContent className="pt-6 text-center text-muted-foreground">
+                You have no upcoming appointments.
+            </CardContent>
+         </Card>
+       )}
 
     </div>
   );

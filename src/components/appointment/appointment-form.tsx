@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -29,12 +30,14 @@ import { CalendarIcon, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { mockDentists, mockServices, availableTimeSlots, mockPatients } from "@/lib/mock-data";
-import type { Dentist, Service } from "@/lib/types";
+import type { Dentist, Service, Patient } from "@/lib/types";
 import { useState, useEffect } from "react";
 import { useSearchParams } from 'next/navigation';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useAuth } from "@/context/auth-context"; // Import useAuth
 
 const appointmentFormSchema = z.object({
-  patientId: z.string().min(1, "Please select a patient."), // In real app, this would be from auth
+  patientId: z.string().min(1, "Patient ID is required."),
   dentistId: z.string().min(1, "Please select a dentist."),
   serviceId: z.string().min(1, "Please select a service."),
   date: z.date({ required_error: "Please select a date." }),
@@ -44,13 +47,14 @@ const appointmentFormSchema = z.object({
 
 type AppointmentFormValues = z.infer<typeof appointmentFormSchema>;
 
-// Mock server action
+// Mock server action (replace with actual Prisma call in a real app)
 async function bookAppointment(data: AppointmentFormValues): Promise<{ success: boolean, message: string, appointmentId?: string }> {
   console.log("Booking appointment with data:", data);
-  // Simulate API call
+  // Simulate API call to create appointment in DB
+  // mockAppointments.push({ ...data, id: `appt-${Date.now()}`, status: 'SCHEDULED', date: format(data.date, "yyyy-MM-dd"), patientName: mockPatients.find(p=>p.id === data.patientId)?.name || 'N/A', dentistName: mockDentists.find(d=>d.id === data.dentistId)?.name || 'N/A', service: mockServices.find(s=>s.id === data.serviceId)?.name || 'N/A' });
   return new Promise(resolve => {
     setTimeout(() => {
-      resolve({ success: true, message: "Appointment booked successfully!", appointmentId: `appt-${Math.random().toString(36).substr(2, 9)}` });
+      resolve({ success: true, message: "Appointment booked successfully! (Mock)", appointmentId: `appt-${Math.random().toString(36).substr(2, 9)}` });
     }, 1500);
   });
 }
@@ -60,11 +64,14 @@ export default function AppointmentForm() {
   const [isLoading, setIsLoading] = useState(false);
   const searchParams = useSearchParams();
   const preselectedDentistId = searchParams.get('dentistId');
+  const { currentUser, userType, isLoadingAuth } = useAuth();
+
+  const defaultPatientId = (userType === 'patient' && currentUser) ? currentUser.id : (mockPatients[0]?.id || '');
 
   const form = useForm<AppointmentFormValues>({
     resolver: zodResolver(appointmentFormSchema),
     defaultValues: {
-      patientId: mockPatients[0]?.id || '', // Default to first mock patient for demo
+      patientId: defaultPatientId,
       dentistId: preselectedDentistId || '',
       serviceId: '',
       time: '',
@@ -78,6 +85,17 @@ export default function AppointmentForm() {
     }
   }, [preselectedDentistId, form]);
 
+  useEffect(() => {
+    // If user logs in/out while on this page, or auth state loads
+    if (!isLoadingAuth && userType === 'patient' && currentUser) {
+      form.setValue('patientId', currentUser.id);
+    } else if (!isLoadingAuth && userType !== 'patient') {
+       // If not a patient or not logged in, reset to default or allow selection
+       // For now, if not a patient, allow selection using mockPatients
+       form.setValue('patientId', mockPatients[0]?.id || '');
+    }
+  }, [currentUser, userType, isLoadingAuth, form]);
+
 
   async function onSubmit(data: AppointmentFormValues) {
     setIsLoading(true);
@@ -90,7 +108,7 @@ export default function AppointmentForm() {
         description: result.message,
       });
       form.reset({
-        patientId: mockPatients[0]?.id || '',
+        patientId: (userType === 'patient' && currentUser) ? currentUser.id : (mockPatients[0]?.id || ''),
         dentistId: preselectedDentistId || '',
         serviceId: '',
         date: undefined,
@@ -106,6 +124,8 @@ export default function AppointmentForm() {
     }
   }
 
+  const isPatientLoggedIn = !isLoadingAuth && userType === 'patient' && currentUser;
+
   return (
     <Card className="w-full max-w-2xl mx-auto shadow-xl">
       <CardHeader className="bg-primary/10 p-6 rounded-t-lg">
@@ -117,28 +137,38 @@ export default function AppointmentForm() {
       <CardContent className="p-6">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            {/* Patient Selection (for demo, in real app this is usually the logged in user) */}
+            
             <FormField
               control={form.control}
               name="patientId"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Patient</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a patient" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {mockPatients.map((patient) => (
-                        <SelectItem key={patient.id} value={patient.id}>
-                          {patient.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormDescription>This would typically be the logged-in user.</FormDescription>
+                  {isPatientLoggedIn ? (
+                    <>
+                      <Input value={currentUser.name} disabled className="bg-muted/50" />
+                      <FormDescription>Booking for yourself: {currentUser.email}</FormDescription>
+                    </>
+                  ) : (
+                    <Select 
+                      onValueChange={field.onChange} 
+                      defaultValue={field.value}
+                      disabled={isLoadingAuth} // Disable while auth is loading
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a patient" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {mockPatients.map((patient) => (
+                          <SelectItem key={patient.id} value={patient.id}>
+                            {patient.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                   <FormMessage />
                 </FormItem>
               )}
@@ -283,6 +313,3 @@ export default function AppointmentForm() {
     </Card>
   );
 }
-
-// Need to add Card, CardHeader, CardTitle, CardDescription, CardContent imports from shadcn to use them
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';

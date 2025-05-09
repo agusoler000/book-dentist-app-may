@@ -1,22 +1,40 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { mockDentists, mockAppointments } from '@/lib/mock-data';
-import { CalendarDays, UserCog, ShieldCheck, Clock, Users, UserPlus } from 'lucide-react';
+import { mockAppointments, mockDentists } from '@/lib/mock-data'; // Appointments and dentists from mock
+import type { Dentist } from '@/lib/types';
+import { CalendarDays, UserCog, ShieldCheck, Clock, Users, UserPlus, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { format, parseISO, isToday, isFuture } from 'date-fns';
-import { useLanguage } from '@/context/language-context'; // For i18n
+import { useLanguage } from '@/context/language-context';
+import { useAuth } from '@/context/auth-context';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 export default function DentistDashboardPage() {
   const { t } = useLanguage();
+  const { currentUser, userType, isLoadingAuth } = useAuth();
+  const router = useRouter();
 
-  // Simulate logged-in dentist
-  const currentDentist = mockDentists[0];
-  if (!currentDentist) {
-    return <p>Dentist data not available. Please log in.</p>;
+  useEffect(() => {
+    if (!isLoadingAuth && (!currentUser || userType !== 'dentist')) {
+      router.push('/login?role=dentist');
+    }
+  }, [currentUser, userType, isLoadingAuth, router]);
+
+  if (isLoadingAuth || !currentUser || userType !== 'dentist') {
+    return (
+      <div className="flex justify-center items-center min-h-[calc(100vh-20rem)]">
+        <Loader2 className="h-12 w-12 animate-spin text-accent" />
+      </div>
+    );
   }
 
+  const currentDentist = currentUser as Omit<Dentist, 'password' | 'appointments'>;
+
+  // Real app: fetch appointments from DB for currentDentist.id
   const todayAppointments = mockAppointments
     .filter(app => app.dentistId === currentDentist.id && isToday(parseISO(app.date)) && app.status === 'SCHEDULED')
     .sort((a, b) => new Date(`1970/01/01 ${a.time}`).getTime() - new Date(`1970/01/01 ${b.time}`).getTime());
@@ -25,10 +43,16 @@ export default function DentistDashboardPage() {
     .filter(app => app.dentistId === currentDentist.id && isFuture(parseISO(app.date)) && app.status === 'SCHEDULED')
     .length;
   
-  const emergencyStatusText = currentDentist.isAvailableForEmergency 
+  // Emergency status should ideally come from the currentUser object fetched from DB
+  // For now, find the corresponding mock dentist to get this status or default it.
+  const mockDentistDetails = mockDentists.find(d => d.id === currentDentist.id);
+  const isAvailableForEmergency = mockDentistDetails ? mockDentistDetails.isAvailableForEmergency : currentDentist.isAvailableForEmergency;
+
+
+  const emergencyStatusText = isAvailableForEmergency 
     ? "You are currently listed as AVAILABLE for emergencies." 
     : "You are currently NOT listed for emergencies.";
-  const emergencyStatusColor = currentDentist.isAvailableForEmergency ? "text-green-600" : "text-red-600";
+  const emergencyStatusColor = isAvailableForEmergency ? "text-green-600" : "text-red-600";
 
   return (
     <div className="space-y-8">
@@ -105,6 +129,14 @@ export default function DentistDashboardPage() {
           </CardContent>
         </Card>
       )}
+      {todayAppointments.length === 0 && (
+         <Card className="shadow-md">
+            <CardContent className="pt-6 text-center text-muted-foreground">
+                You have no appointments scheduled for today.
+            </CardContent>
+         </Card>
+       )}
+
 
     </div>
   );
