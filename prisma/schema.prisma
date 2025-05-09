@@ -1,75 +1,65 @@
 
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
 generator client {
   provider = "prisma-client-js"
 }
 
-datasource db {
-  provider = "sqlite" // Or your chosen database provider
-  url      = "file:./dev.db" // Or your database URL
-}
-
 model Patient {
-  id           String        @id @default(cuid())
-  name         String
-  email        String        @unique
-  password     String // Added for authentication
-  phone        String?
-  dob          DateTime?     @map("date_of_birth")
-  appointments Appointment[]
-  createdAt    DateTime      @default(now()) @map("created_at")
-  updatedAt    DateTime      @updatedAt @map("updated_at")
-
-  @@map("patients")
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String
+  password      String?   // IMPORTANT: In a real application, store hashed passwords.
+  phone         String?
+  dob           DateTime? // Date of Birth
+  // appointments  Appointment[] // Add if Appointment model is defined
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 }
 
 model Dentist {
-  id                      String        @id @default(cuid())
-  name                    String
-  email                   String        @unique
-  password                String // Added for authentication
-  specialty               String
-  phone                   String?
-  isAvailableForEmergency Boolean       @default(false)
-  profileImageUrl         String?
-  bio                     String?
-  appointments            Appointment[]
-  createdAt               DateTime      @default(now()) @map("created_at")
-  updatedAt               DateTime      @updatedAt @map("updated_at")
-
-  @@map("dentists")
+  id                       String    @id @default(cuid())
+  email                    String    @unique
+  name                     String
+  password                 String?   // IMPORTANT: In a real application, store hashed passwords.
+  specialty                String
+  phone                    String?
+  isAvailableForEmergency  Boolean   @default(false)
+  profileImageUrl          String?
+  bio                      String?
+  // appointments             Appointment[] // Add if Appointment model is defined
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
 }
 
-model Appointment {
-  id          String            @id @default(cuid())
-  patientId   String
-  patient     Patient           @relation(fields: [patientId], references: [id])
-  dentistId   String
-  dentist     Dentist           @relation(fields: [dentistId], references: [id])
-  date        DateTime // Changed to DateTime for better querying
-  time        String // e.g., "10:00 AM"
-  service     String // Consider linking to a Service model if services are complex
-  notes       String?
-  status      AppointmentStatus @default(SCHEDULED)
-  createdAt   DateTime          @default(now()) @map("created_at")
-  updatedAt   DateTime          @updatedAt @map("updated_at")
-
-  @@map("appointments")
-}
-
+// Basic AppointmentStatus enum, expand models as needed
 enum AppointmentStatus {
   SCHEDULED
   COMPLETED
   CANCELLED
 }
 
-model Service {
-  id              String    @id @default(cuid())
-  name            String    @unique
-  durationMinutes Int
-  description     String?
-  // appointments    Appointment[] // If using a direct relation
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
-
-  @@map("services")
+// To fully integrate, you would also define Appointment, Service models etc.
+// For example:
+/*
+model Appointment {
+  id           String             @id @default(cuid())
+  date         DateTime
+  time         String
+  service      String // Or link to a Service model
+  notes        String?
+  status       AppointmentStatus  @default(SCHEDULED)
+  
+  patientId    String
+  patient      Patient            @relation(fields: [patientId], references: [id])
+  
+  dentistId    String
+  dentist      Dentist            @relation(fields: [dentistId], references: [id])
+  
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
 }
+*/
