@@ -2,7 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { mockDentists } from '@/lib/mock-data';
 import EmergencyStatusToggle from '@/components/dentist/emergency-status-toggle';
 import Image from 'next/image';
-import { Mail, Phone, Briefcase } from 'lucide-react';
+import { Mail, Phone } from 'lucide-react'; // Removed Briefcase as it's not used here
 
 // In a real app, you'd fetch this based on the logged-in dentist's ID
 const currentDentist = mockDentists[0]; 

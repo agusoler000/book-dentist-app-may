@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import type { Appointment } from '@/lib/types';
+import type { Appointment, AppointmentStatusType } from '@/lib/types';
 import { mockAppointments, mockDentists } from '@/lib/mock-data';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -34,25 +34,25 @@ export default function DentistScheduleView({ dentistId }: DentistScheduleViewPr
     .filter(app => selectedDate && isSameDay(parseISO(app.date), startOfDay(selectedDate)))
     .sort((a, b) => new Date(`1970/01/01 ${a.time}`).getTime() - new Date(`1970/01/01 ${b.time}`).getTime());
 
-  const getStatusBadgeVariant = (status: Appointment['status']) => {
+  const getStatusBadgeVariant = (status: AppointmentStatusType) => {
     switch (status) {
-      case 'scheduled':
+      case 'SCHEDULED':
         return 'default';
-      case 'completed':
+      case 'COMPLETED':
         return 'secondary'; // Using secondary as a "success" like variant
-      case 'cancelled':
+      case 'CANCELLED':
         return 'destructive';
       default:
         return 'outline';
     }
   };
   
-  const getStatusIcon = (status: Appointment['status'], date: string) => {
+  const getStatusIcon = (status: AppointmentStatusType, date: string) => {
     const appDate = parseISO(date);
-    if (status === 'completed') return <CheckCircle className="w-4 h-4 text-green-500" />;
-    if (status === 'cancelled') return <XCircle className="w-4 h-4 text-red-500" />;
-    if (status === 'scheduled' && isFuture(appDate)) return <Clock className="w-4 h-4 text-blue-500" />;
-    if (status === 'scheduled' && isPast(appDate) && !isSameDay(appDate, new Date())) return <AlertCircle className="w-4 h-4 text-yellow-500" />; // Past due
+    if (status === 'COMPLETED') return <CheckCircle className="w-4 h-4 text-green-500" />;
+    if (status === 'CANCELLED') return <XCircle className="w-4 h-4 text-red-500" />;
+    if (status === 'SCHEDULED' && isFuture(appDate)) return <Clock className="w-4 h-4 text-blue-500" />;
+    if (status === 'SCHEDULED' && isPast(appDate) && !isSameDay(appDate, new Date())) return <AlertCircle className="w-4 h-4 text-yellow-500" />; // Past due
     return <Clock className="w-4 h-4 text-blue-500" />;
   };
 
@@ -117,7 +117,7 @@ export default function DentistScheduleView({ dentistId }: DentistScheduleViewPr
                     <TableCell><BriefcaseIcon className="w-4 h-4 inline mr-1 text-muted-foreground" />{app.service}</TableCell>
                     <TableCell>
                       <Badge variant={getStatusBadgeVariant(app.status)} className="capitalize">
-                        {app.status}
+                        {app.status.toLowerCase()}
                       </Badge>
                     </TableCell>
                   </TableRow>

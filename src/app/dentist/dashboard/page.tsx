@@ -1,12 +1,16 @@
+'use client';
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { mockDentists, mockAppointments } from '@/lib/mock-data';
-import type { Appointment } from '@/lib/types';
-import { CalendarDays, UserCog, ShieldCheck, Clock, Users } from 'lucide-react';
+import { CalendarDays, UserCog, ShieldCheck, Clock, Users, UserPlus } from 'lucide-react';
 import Link from 'next/link';
 import { format, parseISO, isToday, isFuture } from 'date-fns';
+import { useLanguage } from '@/context/language-context'; // For i18n
 
 export default function DentistDashboardPage() {
+  const { t } = useLanguage();
+
   // Simulate logged-in dentist
   const currentDentist = mockDentists[0];
   if (!currentDentist) {
@@ -14,11 +18,11 @@ export default function DentistDashboardPage() {
   }
 
   const todayAppointments = mockAppointments
-    .filter(app => app.dentistId === currentDentist.id && isToday(parseISO(app.date)) && app.status === 'scheduled')
+    .filter(app => app.dentistId === currentDentist.id && isToday(parseISO(app.date)) && app.status === 'SCHEDULED')
     .sort((a, b) => new Date(`1970/01/01 ${a.time}`).getTime() - new Date(`1970/01/01 ${b.time}`).getTime());
   
   const upcomingAppointmentsCount = mockAppointments
-    .filter(app => app.dentistId === currentDentist.id && isFuture(parseISO(app.date)) && app.status === 'scheduled')
+    .filter(app => app.dentistId === currentDentist.id && isFuture(parseISO(app.date)) && app.status === 'SCHEDULED')
     .length;
   
   const emergencyStatusText = currentDentist.isAvailableForEmergency 
@@ -68,6 +72,13 @@ export default function DentistDashboardPage() {
           linkText="Manage Profile"
         />
         <DashboardCard
+          title={t('dentistDashboard.registerPatient.title')}
+          description={t('dentistDashboard.registerPatient.description')}
+          icon={<UserPlus className="w-8 h-8 text-accent" />}
+          link="/dentist/register-patient"
+          linkText={t('dentistDashboard.registerPatient.linkText')}
+        />
+         <DashboardCard
           title="Patient Records"
           description="Access patient information (mock feature)."
           icon={<Users className="w-8 h-8 text-accent" />}

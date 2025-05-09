@@ -1,7 +1,7 @@
-import type { Patient, Appointment } from '@/lib/types';
+import type { Patient, Appointment, AppointmentStatusType } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Mail, Phone, CalendarDays as UserCalendarIcon, Gift, MapPin, BriefcaseIcon } from 'lucide-react';
+import { Mail, Phone, Gift, BriefcaseIcon } from 'lucide-react'; // Removed UserCalendarIcon, MapPin
 import { format, parseISO } from 'date-fns';
 import Image from 'next/image';
 
@@ -12,11 +12,11 @@ interface PatientProfileViewProps {
 
 export default function PatientProfileView({ patient, appointments }: PatientProfileViewProps) {
   const upcomingAppointments = appointments
-    .filter(app => app.status === 'scheduled' && parseISO(app.date) >= new Date())
+    .filter(app => app.status === 'SCHEDULED' && parseISO(app.date) >= new Date())
     .sort((a,b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
 
   const pastAppointments = appointments
-    .filter(app => app.status !== 'scheduled' || parseISO(app.date) < new Date())
+    .filter(app => app.status !== 'SCHEDULED' || parseISO(app.date) < new Date())
     .sort((a,b) => parseISO(b.date).getTime() - parseISO(a.date).getTime());
 
 
@@ -96,7 +96,7 @@ export default function PatientProfileView({ patient, appointments }: PatientPro
                     <TableCell>{format(parseISO(app.date), 'MMM d, yyyy')}</TableCell>
                     <TableCell>{app.dentistName || 'N/A'}</TableCell>
                     <TableCell>{app.service}</TableCell>
-                    <TableCell className="capitalize">{app.status}</TableCell>
+                    <TableCell className="capitalize">{app.status.toLowerCase()}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

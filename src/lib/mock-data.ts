@@ -1,4 +1,4 @@
-import type { Patient, Dentist, Appointment, Service } from './types';
+import type { Patient, Dentist, Appointment, Service, AppointmentStatusType } from './types';
 
 export const mockPatients: Patient[] = [
   {
@@ -64,7 +64,7 @@ export const mockAppointments: Appointment[] = [
     date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 2 days from now
     time: '10:00 AM',
     service: 'Routine Check-up & Cleaning',
-    status: 'scheduled',
+    status: 'SCHEDULED',
   },
   {
     id: 'appt-2',
@@ -75,7 +75,7 @@ export const mockAppointments: Appointment[] = [
     date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 3 days from now
     time: '02:30 PM',
     service: 'Orthodontic Consultation',
-    status: 'scheduled',
+    status: 'SCHEDULED',
   },
   {
     id: 'appt-3',
@@ -86,7 +86,7 @@ export const mockAppointments: Appointment[] = [
     date: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 5 days ago
     time: '09:00 AM',
     service: 'Cavity Filling',
-    status: 'completed',
+    status: 'COMPLETED',
   },
 ];
 

@@ -1,0 +1,76 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Patient {
+  id            String        @id @default(cuid())
+  email         String        @unique
+  name          String
+  phone         String?
+  dob           DateTime?
+  appointments  Appointment[]
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model Dentist {
+  id                       String        @id @default(cuid())
+  email                    String        @unique
+  name                     String
+  specialty                String
+  phone                    String?
+  isAvailableForEmergency  Boolean       @default(false)
+  profileImageUrl          String?
+  bio                      String?
+  appointments             Appointment[]
+  createdAt                DateTime      @default(now())
+  updatedAt                DateTime      @updatedAt
+}
+
+model Service {
+  id              String        @id @default(cuid())
+  name            String
+  durationMinutes Int
+  description     String?
+  appointments    Appointment[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+}
+
+enum AppointmentStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
+model Appointment {
+  id          String            @id @default(cuid())
+  date        DateTime
+  time        String // e.g., "10:00 AM"
+  notes       String?
+  status      AppointmentStatus @default(SCHEDULED)
+  
+  patientId   String
+  patient     Patient           @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  
+  dentistId   String
+  dentist     Dentist           @relation(fields: [dentistId], references: [id], onDelete: Cascade)
+  
+  serviceId   String
+  service     Service           @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@index([patientId])
+  @@index([dentistId])
+  @@index([serviceId])
+}
