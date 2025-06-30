@@ -1,182 +1,188 @@
+"use client";
 
-'use client';
+import { FormEvent, useState } from "react";
+import { useToast }            from "@/hooks/use-toast";
+import { useRouter }           from "next/navigation";
 
-import { Button } from "@/components/ui/button";
+
+import { Loader2, MountainIcon } from "lucide-react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MountainIcon, Loader2 } from "lucide-react";
-import Link from "next/link";
-import { useState, FormEvent } from "react";
-import { useToast } from "@/hooks/use-toast";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/context/auth-context";
-import { signupAction, type SignupInput } from "@/app/auth/actions";
-import type { UserType } from "@/lib/types";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { signupAction, SignupInput } from "../actions/auth/auth";
 
 export default function SignupPage() {
-  const [fullName, setFullName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [accountType, setAccountType] = useState<UserType | ''>('');
-  const [specialty, setSpecialty] = useState(''); // For dentists
-  const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
-  const router = useRouter();
-  const auth = useAuth();
+  const [fullName, setFullName]       = useState("");
+  const [email, setEmail]             = useState("");
+  const [password, setPassword]       = useState("");
+  const [confirmPassword, setConfirm] = useState("");
+  const [accountType, setAccountType] = useState<"patient"|"dentist">("patient");
+  const [phone, setPhone]             = useState("");
+  const [dob, setDob]                 = useState("");
+  const [specialty, setSpecialty]     = useState("");
+  const [bio, setBio]                 = useState("");
+  const [loading, setLoading]         = useState(false);
 
-  const handleSubmit = async (e: FormEvent) => {
+  const { toast } = useToast();
+  const router    = useRouter();
+
+  const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (password !== confirmPassword) {
       toast({ title: "Error", description: "Passwords do not match.", variant: "destructive" });
       return;
     }
-    if (!accountType) {
-      toast({ title: "Error", description: "Please select an account type.", variant: "destructive" });
-      return;
-    }
-    if (accountType === 'dentist' && !specialty) {
-      toast({ title: "Error", description: "Specialty is required for dentist accounts.", variant: "destructive" });
-      return;
-    }
+    setLoading(true);
 
-    setIsLoading(true);
-    const signupData: SignupInput = { 
-      fullName, 
-      email, 
-      password, 
-      accountType,
-      ...(accountType === 'dentist' && { specialty }),
-    };
-    
-    const result = await signupAction(signupData);
-    setIsLoading(false);
+  const data: SignupInput = {
+  fullName,
+  email,
+  password,
+  accountType,
+  phone:     phone || undefined,
+  dob:       accountType === "patient" ? dob : undefined,
+  specialty: accountType === "dentist" ? specialty : undefined,
+  bio:       accountType === "dentist" ? bio : undefined,
+};
 
-    if (result.success && result.user && result.userType) {
-      auth.login(result.user, result.userType); // Auto-login on successful signup
-      toast({
-        title: "Signup Successful",
-        description: result.message,
-      });
-      if (result.userType === 'patient') {
-        router.push('/patient/dashboard');
-      } else if (result.userType === 'dentist') {
-        router.push('/dentist/dashboard');
+    try {
+      const result = await signupAction(data);
+      if (result?.success === false) {
+        toast({ title: "Signup Failed", description: result.message, variant: "destructive" });
+        setLoading(false);
       }
-    } else {
-      toast({
-        title: "Signup Failed",
-        description: result.message,
-        variant: "destructive",
-      });
+      // on success, redirect happens in the Server Action
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+      setLoading(false);
     }
   };
 
   return (
-    <div className="flex items-center justify-center min-h-[calc(100vh-10rem)] py-12">
-      <Card className="w-full max-w-lg shadow-2xl">
-        <CardHeader className="space-y-1 text-center bg-primary/10 p-8 rounded-t-lg">
+    <div className="flex items-center justify-center min-h-screen py-12">
+      <Card className="max-w-lg w-full shadow-2xl">
+        <CardHeader className="text-center bg-primary/10 p-8 rounded-t-lg">
           <MountainIcon className="h-8 w-8 mx-auto text-primary" />
-          <CardTitle className="text-3xl font-bold text-primary-foreground mix-blend-multiply">Create Your Account</CardTitle>
-          <CardDescription className="text-primary-foreground/80 mix-blend-multiply">
-            Join DentalFlow today. It&apos;s quick and easy!
-          </CardDescription>
+          <CardTitle>Create Your Account</CardTitle>
+          <CardDescription>Join DentalFlow today—it&apos;s quick and easy!</CardDescription>
         </CardHeader>
-        <CardContent className="p-6 space-y-6">
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <CardContent className="space-y-4 p-6">
+          <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="fullName">Full Name</Label>
-              <Input 
-                id="fullName" 
-                type="text" 
-                placeholder="John Doe" 
-                required 
+              <Input
+                id="fullName"
+                type="text"
+                required
                 value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                disabled={isLoading}
+                onChange={e => setFullName(e.target.value)}
+                disabled={loading}
               />
             </div>
-             <div className="space-y-2">
+            <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input 
-                id="email" 
-                type="email" 
-                placeholder="john.doe@example.com" 
-                required 
+              <Input
+                id="email"
+                type="email"
+                required
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled={isLoading}
+                onChange={e => setEmail(e.target.value)}
+                disabled={loading}
               />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
-                <Input 
-                  id="password" 
-                  type="password" 
-                  required 
+                <Input
+                  id="password"
+                  type="password"
+                  required
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  disabled={isLoading}
+                  onChange={e => setPassword(e.target.value)}
+                  disabled={loading}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">Confirm Password</Label>
-                <Input 
-                  id="confirmPassword" 
-                  type="password" 
-                  required 
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  required
                   value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  disabled={isLoading}
+                  onChange={e => setConfirm(e.target.value)}
+                  disabled={loading}
                 />
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="accountType">I am a...</Label>
-              <Select 
-                onValueChange={(value) => setAccountType(value as UserType)} 
-                value={accountType} 
-                required
-                disabled={isLoading}
-              >
-                <SelectTrigger id="accountType">
-                  <SelectValue placeholder="Select account type" />
-                </SelectTrigger>
+              <Label htmlFor="phone">Phone</Label>
+              <Input
+                id="phone"
+                type="tel"
+                value={phone}
+                onChange={e => setPhone(e.target.value)}
+                disabled={loading}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="accountType">I am a…</Label>
+              <Select value={accountType} onValueChange={v => setAccountType(v as any)} disabled={loading}>
+                <SelectTrigger id="accountType"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="patient">Patient</SelectItem>
                   <SelectItem value="dentist">Dentist</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            {accountType === 'dentist' && (
+
+            {accountType === "patient" && (
               <div className="space-y-2">
-                <Label htmlFor="specialty">Specialty</Label>
-                <Input 
-                  id="specialty" 
-                  type="text" 
-                  placeholder="e.g., General Dentistry, Orthodontics" 
-                  required 
-                  value={specialty}
-                  onChange={(e) => setSpecialty(e.target.value)}
-                  disabled={isLoading}
+                <Label htmlFor="dob">Date of Birth</Label>
+                <Input
+                  id="dob"
+                  type="date"
+                  value={dob}
+                  onChange={e => setDob(e.target.value)}
+                  disabled={loading}
                 />
               </div>
             )}
-            <Button type="submit" className="w-full bg-accent text-accent-foreground hover:bg-accent/90" disabled={isLoading}>
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isLoading ? 'Signing Up...' : 'Sign Up'}
+
+            {accountType === "dentist" && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="specialty">Specialty</Label>
+                  <Input
+                    id="specialty"
+                    value={specialty}
+                    onChange={e => setSpecialty(e.target.value)}
+                    disabled={loading}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="bio">Bio</Label>
+                  <Input
+                    id="bio"
+                    value={bio}
+                    onChange={e => setBio(e.target.value)}
+                    disabled={loading}
+                  />
+                </div>
+              </>
+            )}
+
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading && <Loader2 className="animate-spin mr-2 h-4 w-4" />}
+              {loading ? "Signing Up…" : "Sign Up"}
             </Button>
           </form>
         </CardContent>
-        <CardFooter className="flex justify-center p-6 border-t">
-          <p className="text-sm text-muted-foreground">
+        <CardFooter className="text-center">
+          <p className="text-sm">
             Already have an account?{" "}
-            <Link href="/login" className="font-medium text-accent hover:underline">
-              Log In
-            </Link>
+            <a href="/login" className="text-accent hover:underline">Log In</a>
           </p>
         </CardFooter>
       </Card>

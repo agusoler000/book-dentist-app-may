@@ -1,44 +1,41 @@
+// src/app/patient/dashboard/page.tsx
 
-'use client';
-
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { mockAppointments, mockPatients } from '@/lib/mock-data'; // Still using mock data for appointments
-import type { AppointmentStatusType, Patient } from '@/lib/types';
-import { CalendarCheck, UserCircle, ShieldAlert, PlusCircle, Clock, Loader2 } from 'lucide-react';
-import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { mockAppointments, mockPatients } from '@/lib/mock-data';
+import type { Appointment, Patient } from '@/lib/types';
 import { format, parseISO, isFuture } from 'date-fns';
-import { useAuth } from '@/context/auth-context';
-import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import Link from 'next/link';
 
-export default function PatientDashboardPage() {
-  const { currentUser, userType, isLoadingAuth } = useAuth();
-  const router = useRouter();
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { CalendarCheck, UserCircle, ShieldAlert, PlusCircle, Clock } from 'lucide-react';
 
-  useEffect(() => {
-    if (!isLoadingAuth && (!currentUser || userType !== 'patient')) {
-      router.push('/login?role=patient');
-    }
-  }, [currentUser, userType, isLoadingAuth, router]);
-
-  if (isLoadingAuth || !currentUser || userType !== 'patient') {
-    return (
-      <div className="flex justify-center items-center min-h-[calc(100vh-20rem)]">
-        <Loader2 className="h-12 w-12 animate-spin text-accent" />
-      </div>
-    );
+export default async function PatientDashboardPage() {
+  // 1) Validar sesión en el servidor
+  const session = await getServerSession(authOptions);
+  console.log({session});
+  
+  if (!session || session.user.role !== 'PATIENT') {
+    redirect('/login?role=patient');
   }
 
-  const currentPatient = currentUser as Omit<Patient, 'password' | 'appointments'>;
 
 
-  const upcomingAppointments = mockAppointments // Real app: fetch from DB for currentPatient.id
-    .filter(app => app.patientId === currentPatient.id && app.status === 'SCHEDULED' && isFuture(parseISO(app.date)))
-    .sort((a, b) => parseISO(a.date).getTime() - parseISO(b.date).getTime());
-  
+  // 3) Calcular citas próximas (mock)
+  const upcomingAppointments: Appointment[] = mockAppointments
+    .filter(app =>
+      app.patientId === currentPatient.id &&
+      app.status === 'SCHEDULED' &&
+      isFuture(parseISO(app.date))
+    )
+    .sort((a, b) =>
+      parseISO(a.date).getTime() - parseISO(b.date).getTime()
+    );
   const nextAppointment = upcomingAppointments[0];
 
+  // 4) Renderizar UI
   return (
     <div className="space-y-8">
       <Card className="shadow-lg border-primary/20">
@@ -51,17 +48,23 @@ export default function PatientDashboardPage() {
           </CardDescription>
         </CardHeader>
         {nextAppointment && (
-           <CardContent className="pt-6">
-             <h3 className="text-xl font-semibold mb-2 text-foreground">Your Next Appointment:</h3>
-             <div className="p-4 border rounded-lg bg-secondary/30 space-y-1">
-               <p className="font-medium text-secondary-foreground">
-                 <CalendarCheck className="inline w-5 h-5 mr-2 text-accent" /> 
-                 {format(parseISO(nextAppointment.date), 'EEEE, MMMM d, yyyy')} at {nextAppointment.time}
-               </p>
-               <p className="text-sm text-muted-foreground">With: {nextAppointment.dentistName}</p>
-               <p className="text-sm text-muted-foreground">Service: {nextAppointment.service}</p>
-             </div>
-           </CardContent>
+          <CardContent className="pt-6">
+            <h3 className="text-xl font-semibold mb-2 text-foreground">
+              Your Next Appointment:
+            </h3>
+            <div className="p-4 border rounded-lg bg-secondary/30 space-y-1">
+              <p className="font-medium text-secondary-foreground">
+                <CalendarCheck className="inline w-5 h-5 mr-2 text-accent" />
+                {format(parseISO(nextAppointment.date), 'EEEE, MMMM d, yyyy')} at {nextAppointment.time}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                With: {nextAppointment.dentistName}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Service: {nextAppointment.service}
+              </p>
+            </div>
+          </CardContent>
         )}
       </Card>
 
@@ -88,32 +91,40 @@ export default function PatientDashboardPage() {
           linkText="Find Help"
         />
       </div>
-      
-      {upcomingAppointments.length > 0 && ( // Show all if any, next is already highlighted
+
+      {upcomingAppointments.length > 0 ? (
         <Card className="shadow-md">
           <CardHeader>
-            <CardTitle className="flex items-center"><Clock className="w-6 h-6 mr-2 text-accent"/>All Upcoming Appointments</CardTitle>
+            <CardTitle className="flex items-center">
+              <Clock className="w-6 h-6 mr-2 text-accent" />
+              All Upcoming Appointments
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="space-y-3">
               {upcomingAppointments.map(app => (
-                <li key={app.id} className="p-3 border rounded-md bg-background hover:bg-muted/50 transition-colors">
-                  <p className="font-semibold">{format(parseISO(app.date), 'MMMM d, yyyy')} at {app.time} - {app.service}</p>
-                  <p className="text-sm text-muted-foreground">With {app.dentistName}</p>
+                <li
+                  key={app.id}
+                  className="p-3 border rounded-md bg-background hover:bg-muted/50 transition-colors"
+                >
+                  <p className="font-semibold">
+                    {format(parseISO(app.date), 'MMMM d, yyyy')} at {app.time} – {app.service}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    With {app.dentistName}
+                  </p>
                 </li>
               ))}
             </ul>
           </CardContent>
         </Card>
+      ) : (
+        <Card className="shadow-md">
+          <CardContent className="pt-6 text-center text-muted-foreground">
+            You have no upcoming appointments.
+          </CardContent>
+        </Card>
       )}
-       {upcomingAppointments.length === 0 && !nextAppointment && (
-         <Card className="shadow-md">
-            <CardContent className="pt-6 text-center text-muted-foreground">
-                You have no upcoming appointments.
-            </CardContent>
-         </Card>
-       )}
-
     </div>
   );
 }
