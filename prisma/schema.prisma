@@ -15,9 +15,18 @@ enum Role {
 
 /// Status for appointments
 enum AppointmentStatus {
+  PENDING
   SCHEDULED
   COMPLETED
   CANCELLED
+}
+
+/// Status for emergencies
+enum EmergencyStatus {
+  PENDING
+  APPROVED
+  CANCELLED
+  FINISHED
 }
 
 /// NextAuth account model
@@ -76,13 +85,17 @@ model User {
   // NextAuth relations
   accounts  Account[]
   sessions  Session[]
+
+  // Notifications
+  notifications Notification[]
 }
 
 /// Profile data for patients
 model Patient {
   id         String       @id @default(uuid())
+  dni        String       @unique
   phone      String?
-  dob        DateTime?
+  dateOfBirth DateTime
   createdAt  DateTime     @default(now())
   updatedAt  DateTime     @updatedAt
 
@@ -92,6 +105,7 @@ model Patient {
 
   // Appointments booked by this patient
   appointments Appointment[]
+  emergencies  Emergency[]
 }
 
 /// Profile data for dentists
@@ -111,18 +125,7 @@ model Dentist {
 
   // Appointments assigned to this dentist
   appointments Appointment[]
-}
-
-/// Services that can be booked
-model Service {
-  id              String        @id @default(uuid())
-  name            String        @unique
-  description     String?
-  durationMinutes Int
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
-
-  appointments    Appointment[]
+  emergencies  Emergency[]
 }
 
 /// Booked appointments linking patients, dentists, and services
@@ -141,6 +144,39 @@ model Appointment {
   dentist     Dentist           @relation(fields: [dentistId], references: [id])
   dentistId   String
 
-  service     Service           @relation(fields: [serviceId], references: [id])
-  serviceId   String
+  serviceName String            // Nuevo campo para el nombre del servicio
+}
+
+/// Notification system
+model Notification {
+  id        String   @id @default(uuid())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  type      String   // e.g. 'INFO', 'EMERGENCY', 'APPOINTMENT', etc
+  title     String
+  message   String
+  link      String?  // Optional: link to related resource
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Emergency {
+  id          String         @id @default(uuid())
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  status      EmergencyStatus @default(PENDING)
+  description String
+  name        String
+  phone       String
+  dni         String
+  notified    Boolean        @default(false)
+
+  // Relación opcional con paciente registrado
+  patient     Patient?       @relation(fields: [patientId], references: [id])
+  patientId   String?
+
+  // Relación opcional con dentista asignado
+  dentist     Dentist?       @relation(fields: [dentistId], references: [id])
+  dentistId   String?
 }

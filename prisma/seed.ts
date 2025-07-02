@@ -1,4 +1,3 @@
-
 import { PrismaClient, AppointmentStatus } from '@prisma/client';
 import { format } from 'date-fns';
 
@@ -32,7 +31,7 @@ async function main() {
   // Seed Dentists
   const dentist1 = await prisma.dentist.create({
     data: {
-      email: 'dr.eve@dentalflow.com',
+      email: 'dr.eve@coec.com',
       name: 'Dr. Eve Toothaker',
       password: 'password123', // Plaintext for mock/seed
       specialty: 'General Dentistry',
@@ -44,7 +43,7 @@ async function main() {
 
   const dentist2 = await prisma.dentist.create({
     data: {
-      email: 'dr.adam@dentalflow.com',
+      email: 'dr.adam@coec.com',
       name: 'Dr. Adam Smilewright',
       password: 'password123', // Plaintext for mock/seed
       specialty: 'Orthodontics',
@@ -56,7 +55,7 @@ async function main() {
 
   const dentist3 = await prisma.dentist.create({
     data: {
-      email: 'dr.grace@dentalflow.com',
+      email: 'dr.grace@coec.com',
       name: 'Dr. Grace Periodontal',
       password: 'password123', // Plaintext for mock/seed
       specialty: 'Periodontics',

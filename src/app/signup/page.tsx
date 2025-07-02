@@ -20,9 +20,10 @@ export default function SignupPage() {
   const [confirmPassword, setConfirm] = useState("");
   const [accountType, setAccountType] = useState<"patient"|"dentist">("patient");
   const [phone, setPhone]             = useState("");
-  const [dob, setDob]                 = useState("");
+  const [dateOfBirth, setDateOfBirth] = useState("");
   const [specialty, setSpecialty]     = useState("");
   const [bio, setBio]                 = useState("");
+  const [dni, setDni]                 = useState("");
   const [loading, setLoading]         = useState(false);
 
   const { toast } = useToast();
@@ -42,7 +43,8 @@ export default function SignupPage() {
   password,
   accountType,
   phone:     phone || undefined,
-  dob:       accountType === "patient" ? dob : undefined,
+  dni:       accountType === "patient" ? dni : undefined,
+  dateOfBirth: accountType === "patient" ? dateOfBirth : undefined,
   specialty: accountType === "dentist" ? specialty : undefined,
   bio:       accountType === "dentist" ? bio : undefined,
 };
@@ -66,7 +68,7 @@ export default function SignupPage() {
         <CardHeader className="text-center bg-primary/10 p-8 rounded-t-lg">
           <MountainIcon className="h-8 w-8 mx-auto text-primary" />
           <CardTitle>Create Your Account</CardTitle>
-          <CardDescription>Join DentalFlow today—it&apos;s quick and easy!</CardDescription>
+          <CardDescription>Join COEC today—it&apos;s quick and easy!</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 p-6">
           <form onSubmit={onSubmit} className="space-y-4">
@@ -138,16 +140,30 @@ export default function SignupPage() {
             </div>
 
             {accountType === "patient" && (
-              <div className="space-y-2">
-                <Label htmlFor="dob">Date of Birth</Label>
-                <Input
-                  id="dob"
-                  type="date"
-                  value={dob}
-                  onChange={e => setDob(e.target.value)}
-                  disabled={loading}
-                />
-              </div>
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="dni">DNI / Passport</Label>
+                  <Input
+                    id="dni"
+                    type="text"
+                    required
+                    value={dni}
+                    onChange={e => setDni(e.target.value)}
+                    disabled={loading}
+                    placeholder="DNI / Passport"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="dateOfBirth">Date of Birth</Label>
+                  <Input
+                    id="dateOfBirth"
+                    type="date"
+                    value={dateOfBirth}
+                    onChange={e => setDateOfBirth(e.target.value)}
+                    disabled={loading}
+                  />
+                </div>
+              </>
             )}
 
             {accountType === "dentist" && (

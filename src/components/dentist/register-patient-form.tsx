@@ -30,7 +30,9 @@ const createPatientFormSchema = (t: Function) => z.object({
   name: z.string().min(1, { message: t('form.field.required') }),
   email: z.string().email({ message: t('form.field.email.invalid') }),
   phone: z.string().optional(),
-  dob: z.date().optional(),
+  dni: z.string().min(1, { message: t('form.field.required') }),
+  dateOfBirth: z.date({ required_error: t('form.field.required') }),
+  password: z.string().min(6, { message: t('form.field.password.min') }),
 });
 
 
@@ -48,7 +50,9 @@ export default function RegisterPatientForm() {
       name: '',
       email: '',
       phone: '',
-      dob: undefined,
+      dni: '',
+      dateOfBirth: undefined,
+      password: '',
     },
   });
 
@@ -56,7 +60,8 @@ export default function RegisterPatientForm() {
     setIsLoading(true);
     const patientData: PatientRegistrationInput = {
       ...data,
-      dob: data.dob ? format(data.dob, 'yyyy-MM-dd') : undefined,
+      dateOfBirth: data.dateOfBirth ? format(data.dateOfBirth, 'yyyy-MM-dd') : undefined,
+      password: data.password,
     };
     
     const result = await registerPatient(patientData);
@@ -65,7 +70,7 @@ export default function RegisterPatientForm() {
     if (result.success) {
       toast({
         title: t('patientRegistration.success'),
-        description: `${result.patient?.name} (${result.patient?.email}) has been registered.`,
+        description: `${'name' in (result.patient ?? {}) && result.patient?.name ? result.patient.name : ''}${'email' in (result.patient ?? {}) && result.patient?.email ? ' (' + result.patient.email + ')' : ''} has been registered.`,
       });
       form.reset();
     } else {
@@ -135,7 +140,34 @@ export default function RegisterPatientForm() {
             />
             <FormField
               control={form.control}
-              name="dob"
+              name="dni"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>DNI</FormLabel>
+                  <FormControl>
+                    <Input placeholder="DNI" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="password"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('form.field.password')}</FormLabel>
+                  <FormControl>
+                    <Input type="password" placeholder={t('form.field.password.placeholder')} {...field} />
+                  </FormControl>
+                  <FormDescription>{t('form.field.password.desc')}</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="dateOfBirth"
               render={({ field }) => (
                 <FormItem className="flex flex-col">
                   <FormLabel>{t('patientRegistration.dob')}</FormLabel>
@@ -150,11 +182,11 @@ export default function RegisterPatientForm() {
                           )}
                         >
                           <CalendarIcon className="mr-2 h-4 w-4" />
-                          {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                          {field.value ? format(field.value, "PPP") : <span>{t('form.field.date.placeholder')}</span>}
                         </Button>
                       </FormControl>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
+                    <PopoverContent className="min-w-[340px] p-0" align="start">
                       <Calendar
                         mode="single"
                         selected={field.value}
@@ -163,6 +195,10 @@ export default function RegisterPatientForm() {
                           date > new Date() || date < new Date("1900-01-01")
                         }
                         initialFocus
+                        captionLayout="dropdown"
+                        fromYear={1900}
+                        toYear={new Date().getFullYear()}
+                        className="flex flex-col items-center"
                       />
                     </PopoverContent>
                   </Popover>

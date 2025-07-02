@@ -1,34 +1,23 @@
 'use client';
 
 import { useLanguage } from '@/context/language-context';
-import { Button } from '@/components/ui/button';
 import { Globe } from 'lucide-react';
 
 export default function LanguageSwitcher() {
   const { locale, setLocale, t } = useLanguage();
 
-  const toggleLanguage = () => {
-    setLocale(locale === 'en' ? 'es' : 'en');
-  };
-
   return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button variant="outline" size="icon" onClick={toggleLanguage} aria-label="Change language">
-            <Globe className="h-5 w-5" />
-            <span className="sr-only">
-              {locale === 'en' ? t('languageSwitcher.es') : t('languageSwitcher.en')}
-            </span>
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>{locale === 'en' ? `Switch to ${t('languageSwitcher.es')}` : `Cambiar a ${t('languageSwitcher.en')}`}</p>
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <div className="flex items-center gap-2">
+      <Globe className="h-5 w-5 text-muted-foreground" />
+      <select
+        className="border rounded px-2 py-1 bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-accent"
+        value={locale}
+        onChange={e => setLocale(e.target.value as 'en' | 'es')}
+        aria-label={t('languageSwitcher.label')}
+      >
+        <option value="es">{t('languageSwitcher.spanish')}</option>
+        <option value="en">{t('languageSwitcher.english')}</option>
+      </select>
+    </div>
   );
 }
-
-// Necessary imports for Tooltip if not already globally available in context
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';

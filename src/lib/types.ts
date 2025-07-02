@@ -1,11 +1,11 @@
-
 export interface Patient {
   id: string;
   name: string;
   email: string;
   password?: string; // Optional, for form data, not stored in auth context/client
   phone?: string;
-  dob?: string; // ISO date string e.g. "1990-01-01". Prisma: DateTime
+  dni: string;
+  dateOfBirth: string; // ISO date string e.g. "1990-01-01". Prisma: DateTime
   // appointments are typically fetched via relation, not embedded directly unless denormalized
 }
 

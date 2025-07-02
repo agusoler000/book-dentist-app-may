@@ -1,0 +1,103 @@
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import prisma from "@/lib/prisma";
+import { NextResponse } from "next/server";
+
+export async function POST(req: Request) {
+  let session = await getServerSession(authOptions);
+  let body = await req.json();
+  let { description, name, phone, dni } = body;
+
+  if (!description || !name || !dni) {
+    return NextResponse.json({ success: false, error: "Description, name, and dni are required." }, { status: 400 });
+  }
+
+  let patientId: string | undefined = undefined;
+  // Si está logueado como paciente, usa sus datos
+  if (session && (session.user as any).role === "PATIENT") {
+    const patient = await prisma.patient.findUnique({ where: { userId: (session.user as any).id }, include: { user: true } });
+    if (patient) {
+      name = patient.user?.name || name;
+      phone = patient.phone || phone;
+      dni = patient.dni || dni;
+      patientId = patient.id;
+    }
+  }
+
+  const emergency = await prisma.emergency.create({
+    data: {
+      description,
+      name,
+      phone: phone || '',
+      dni,
+      status: 'PENDING',
+      patientId,
+    },
+  });
+
+  // Notificar a todos los dentistas disponibles para emergencias
+  const dentists = await prisma.dentist.findMany({
+    where: { isAvailableForEmergency: true },
+    include: { user: true },
+  });
+  await Promise.all(dentists.map(dentist =>
+    prisma.notification.create({
+      data: {
+        userId: dentist.userId,
+        type: 'EMERGENCY',
+        title: 'Nueva emergencia recibida',
+        message: `¡Nueva urgencia! Paciente: ${name}, DNI: ${dni}, Tel: ${phone}. Descripción: ${description}`,
+        link: '/dentist/dashboard',
+      },
+    })
+  ));
+
+  // TODO: Enviar WhatsApp automático aquí usando una API externa
+
+  return NextResponse.json({ success: true, emergency });
+}
+
+export async function GET(req: Request) {
+  const session = await getServerSession(authOptions);
+  const url = new URL(req.url);
+  const mine = url.searchParams.get('mine');
+  if (mine && session && (session.user as any).role === 'PATIENT') {
+    // Emergencias del paciente logueado
+    const patient = await prisma.patient.findUnique({ where: { userId: (session.user as any).id } });
+    if (!patient) {
+      return NextResponse.json({ success: true, emergencies: [] });
+    }
+    const emergencies = await prisma.emergency.findMany({
+      where: { patientId: patient.id },
+      orderBy: { createdAt: 'desc' },
+    });
+    return NextResponse.json({ success: true, emergencies });
+  }
+  if (!session || (session.user as any).role !== "DENTIST") {
+    return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+  }
+  const userId = (session.user as any).id;
+  // Buscar el perfil del dentista
+  const dentist = await prisma.dentist.findUnique({ where: { userId } });
+  if (!dentist) {
+    return NextResponse.json({ success: false, error: "Dentist profile not found" }, { status: 404 });
+  }
+  // Emergencias PENDING o asignadas a este dentista (que no estén finalizadas)
+  const emergencies = await prisma.emergency.findMany({
+    where: {
+      AND: [
+        { status: { not: 'FINISHED' } },
+        {
+          OR: [
+            { status: 'PENDING' },
+            { dentistId: dentist.id }
+          ]
+        }
+      ]
+    },
+    orderBy: { createdAt: 'desc' },
+    include: { patient: { include: { user: true } }, dentist: true },
+  });
+  return NextResponse.json({ success: true, emergencies });
+}
+// Nota: Las notificaciones de tipo EMERGENCY ya se crean en el POST y deben ser resaltadas en la UI (color, ícono, etc). 

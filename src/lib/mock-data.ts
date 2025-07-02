@@ -1,4 +1,3 @@
-
 import type { Patient, Dentist, Appointment, Service, AppointmentStatusType } from './types';
 import { parseISO, format } from 'date-fns';
 
@@ -29,7 +28,7 @@ export const mockDentists: Dentist[] = [
     id: 'dentist-1-mock',
     name: 'Dr. Eve Toothaker (Mock)',
     specialty: 'General Dentistry',
-    email: 'dr.eve.mock@dentalflow.com',
+    email: 'dr.eve.mock@coec.com',
     isAvailableForEmergency: true,
     profileImageUrl: 'https://picsum.photos/seed/dentist1mock/200/200',
     bio: 'Mock: Experienced general dentist.',
@@ -38,7 +37,7 @@ export const mockDentists: Dentist[] = [
     id: 'dentist-2-mock',
     name: 'Dr. Adam Smilewright (Mock)',
     specialty: 'Orthodontics',
-    email: 'dr.adam.mock@dentalflow.com',
+    email: 'dr.adam.mock@coec.com',
     isAvailableForEmergency: false,
     profileImageUrl: 'https://picsum.photos/seed/dentist2mock/200/200',
     bio: 'Mock: Specializing in beautiful smiles.',
