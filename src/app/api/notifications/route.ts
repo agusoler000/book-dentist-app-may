@@ -26,12 +26,12 @@ export async function POST(req: Request) {
   }
   const userId = (session.user as any).id;
   const body = await req.json();
-  const { type, title, message, link } = body;
+  const { type, title, message, link, event } = body;
   if (!type || !title || !message) {
     return NextResponse.json({ success: false, error: "Missing fields" }, { status: 400 });
   }
   const notification = await prisma.notification.create({
-    data: { userId, type, title, message, link },
+    data: { userId, type, title, message, link, event },
   });
   return NextResponse.json({ success: true, notification });
 }

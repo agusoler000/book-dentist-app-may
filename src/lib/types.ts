@@ -52,3 +52,17 @@ export type AuthenticatedUser =
   | Omit<Dentist, 'password' | 'appointments'>;
 
 export type UserType = 'patient' | 'dentist';
+
+export type NotificationType = 'regular' | 'emergency' | 'appointment';
+export interface Notification {
+  id: string;
+  userId: string;
+  type: NotificationType;
+  event?: 'emergency' | 'appointment' | string;
+  title: string;
+  message: string;
+  link?: string;
+  read: boolean;
+  createdAt: string;
+  updatedAt: string;
+}

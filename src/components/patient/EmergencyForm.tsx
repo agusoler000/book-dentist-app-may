@@ -25,6 +25,8 @@ export default function EmergencyForm({ onSuccess }: EmergencyFormProps) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+  const [dentists, setDentists] = useState<any[]>([]);
+  const [selectedDentist, setSelectedDentist] = useState<string>('ALL');
 
   // Autocompletar DNI y teléfono si es paciente
   useEffect(() => {
@@ -48,6 +50,12 @@ export default function EmergencyForm({ onSuccess }: EmergencyFormProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPatient, session, user?.name]);
 
+  useEffect(() => {
+    fetch('/api/dentists?availableForEmergency=1')
+      .then(res => res.json())
+      .then(data => setDentists(data));
+  }, []);
+
   if (isDentist) return null;
 
   const handleChange = (e: any) => {
@@ -67,7 +75,7 @@ export default function EmergencyForm({ onSuccess }: EmergencyFormProps) {
     const res = await fetch('/api/emergencies', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(form),
+      body: JSON.stringify({ ...form, dentistId: selectedDentist }),
     });
     const data = await res.json();
     if (data.success) {
@@ -101,6 +109,21 @@ export default function EmergencyForm({ onSuccess }: EmergencyFormProps) {
           <div>
             <label className="block text-sm font-medium mb-1">{t('publicEmergency.description')}</label>
             <Textarea name="description" value={form.description} onChange={handleChange} required disabled={loading} rows={4} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">{t('publicEmergency.chooseDentist')}</label>
+            <select
+              className="w-full border rounded p-2"
+              value={selectedDentist}
+              onChange={e => setSelectedDentist(e.target.value)}
+              disabled={loading}
+              required
+            >
+              <option value="ALL">{t('publicEmergency.notifyAll')}</option>
+              {dentists.map((d: any) => (
+                <option key={d.id} value={d.id}>{d.user?.name || d.id}</option>
+              ))}
+            </select>
           </div>
           {error && <div className="text-red-600 text-sm font-semibold text-center">{error}</div>}
           <Button type="submit" className="w-full bg-red-600 hover:bg-red-700 text-white font-bold text-lg py-2" disabled={loading}>

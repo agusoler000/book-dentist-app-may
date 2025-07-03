@@ -4,6 +4,8 @@ import { useLanguage } from "@/context/language-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle, XCircle, Bell } from "lucide-react";
+import { getSocket } from '@/lib/socket';
+import { useDentistNotifications } from '@/hooks/use-dentist-notifications';
 
 export default function DentistNotificationsPage() {
   const { t } = useLanguage();
@@ -14,6 +16,13 @@ export default function DentistNotificationsPage() {
 
   useEffect(() => {
     fetchNotifications();
+    const socket = getSocket();
+    socket.emit('join', 'notifications');
+    socket.on('notifications:update', fetchNotifications);
+    return () => {
+      socket.off('notifications:update', fetchNotifications);
+      socket.emit('leave', 'notifications');
+    };
   }, []);
 
   async function fetchNotifications() {
@@ -51,6 +60,24 @@ export default function DentistNotificationsPage() {
     }
     setActionLoading(null);
   }
+
+  // Recarga de emergencias
+  const reloadEmergencies = () => {
+    fetch('/api/emergencies')
+      .then(res => res.json())
+      .then(data => {
+        // Puedes actualizar el estado global o local aquí si lo necesitas
+      });
+  };
+  // Recarga de citas
+  const reloadAppointments = () => {
+    fetch('/api/appointments')
+      .then(res => res.json())
+      .then(data => {
+        // Puedes actualizar el estado global o local aquí si lo necesitas
+      });
+  };
+  useDentistNotifications({ reloadEmergencies, reloadAppointments });
 
   return (
     <div className="max-w-2xl mx-auto py-10">

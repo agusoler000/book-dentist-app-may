@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { useLanguage } from "@/context/language-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Bell } from "lucide-react";
+import { getSocket } from '@/lib/socket';
+import { usePatientNotifications } from '@/hooks/use-patient-notifications';
 
 export default function PatientNotificationsPage() {
   const { t } = useLanguage();
@@ -12,6 +14,13 @@ export default function PatientNotificationsPage() {
 
   useEffect(() => {
     fetchNotifications();
+    const socket = getSocket();
+    socket.emit('join', 'notifications');
+    socket.on('notifications:update', fetchNotifications);
+    return () => {
+      socket.off('notifications:update', fetchNotifications);
+      socket.emit('leave', 'notifications');
+    };
   }, []);
 
   async function fetchNotifications() {
@@ -27,6 +36,24 @@ export default function PatientNotificationsPage() {
     }
     setLoading(false);
   }
+
+  // Recarga de emergencias
+  const reloadEmergencies = () => {
+    fetch('/api/emergencies?mine=1')
+      .then(res => res.json())
+      .then(data => {
+        // Puedes actualizar el estado global o local aquí si lo necesitas
+      });
+  };
+  // Recarga de citas
+  const reloadAppointments = () => {
+    fetch('/api/appointments?mine=1')
+      .then(res => res.json())
+      .then(data => {
+        // Puedes actualizar el estado global o local aquí si lo necesitas
+      });
+  };
+  usePatientNotifications({ reloadEmergencies, reloadAppointments });
 
   return (
     <div className="max-w-2xl mx-auto py-10">

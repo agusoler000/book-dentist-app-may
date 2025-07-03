@@ -9,6 +9,8 @@ import EmergencyForm from '@/components/patient/EmergencyForm';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useSession } from 'next-auth/react';
 import { useEffect, useState } from 'react';
+import { getSocket } from '@/lib/socket';
+import { usePatientNotifications } from '@/hooks/use-patient-notifications';
 
 function getDateObj(date: string | Date) {
   return typeof date === 'string' ? parseISO(date) : date;
@@ -38,8 +40,9 @@ export default function PatientDashboardClient({ profile, appointments }: any) {
   const { data: session } = useSession();
   const [emergencies, setEmergencies] = useState<any[]>([]);
   const [loadingEmergencies, setLoadingEmergencies] = useState(true);
+  const [appointmentsState, setAppointmentsState] = useState<any[]>(appointments);
   const currentPatient = profile.patient;
-  const upcomingAppointments = appointments
+  const upcomingAppointments = appointmentsState
     .filter((app: any) => {
       if (!app.date) return false;
       return app.status === 'SCHEDULED' && getDateObj(app.date) >= new Date();
@@ -47,14 +50,39 @@ export default function PatientDashboardClient({ profile, appointments }: any) {
     .sort((a: any, b: any) => getDateObj(a.date).getTime() - getDateObj(b.date).getTime());
   const nextAppointment = upcomingAppointments[0];
 
-  useEffect(() => {
-    fetch('/api/emergencies?mine=1')
+  const reloadEmergencies = () => {
+    setLoadingEmergencies(true);
+    const patientId = session?.user?.patientId;
+    let url = '/api/emergencies?mine=1';
+    if (patientId) {
+      url = `/api/emergencies?patientId=${patientId}`;
+    }
+    fetch(url, { credentials: 'include' })
       .then(res => res.json())
       .then(data => {
-        if (data.success) setEmergencies(data.emergencies);
+        if (data && Array.isArray(data.emergencies)) setEmergencies(data.emergencies);
+        else setEmergencies([]);
+        setLoadingEmergencies(false);
+      })
+      .catch(() => {
+        setEmergencies([]);
         setLoadingEmergencies(false);
       });
-  }, []);
+  };
+  const reloadAppointments = () => {
+    fetch('/api/appointments?mine=1')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) setAppointmentsState(data.appointments);
+      });
+  };
+  usePatientNotifications({ reloadEmergencies, reloadAppointments });
+
+  useEffect(() => {
+    if (session) {
+      reloadEmergencies();
+    }
+  }, [session]);
 
   return (
     <div className="space-y-8">
@@ -117,51 +145,6 @@ export default function PatientDashboardClient({ profile, appointments }: any) {
           linkText={t('notifications.seeAll')}
         />
       </div>
-      <Accordion type="single" collapsible className="max-w-2xl mx-auto">
-        <AccordionItem value="emergency-form">
-          <AccordionTrigger>{t('patientDashboard.requestEmergency')}</AccordionTrigger>
-          <AccordionContent>
-            <EmergencyForm onSuccess={() => {
-              setLoadingEmergencies(true);
-              fetch('/api/emergencies?mine=1')
-                .then(res => res.json())
-                .then(data => {
-                  if (data.success) setEmergencies(data.emergencies);
-                  setLoadingEmergencies(false);
-                });
-            }} />
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
-      <Card className="shadow-md max-w-2xl mx-auto">
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <ShieldAlert className="w-6 h-6 mr-2 text-accent" />
-            {t('patientDashboard.myEmergencies')}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loadingEmergencies ? (
-            <div className="text-center text-muted-foreground">{t('loading')}</div>
-          ) : emergencies.length === 0 ? (
-            <div className="text-center text-muted-foreground">{t('patientDashboard.noEmergencies')}</div>
-          ) : (
-            <ul className="space-y-3">
-              {emergencies.map((em: any) => (
-                <li key={em.id} className={`p-3 border rounded-md flex flex-col gap-1 ${em.status === 'PENDING' ? 'bg-red-50 border-red-400' : 'bg-background'}`}>
-                  <div className="flex items-center gap-2">
-                    <ShieldAlert className={`w-5 h-5 ${em.status === 'PENDING' ? 'text-red-600 animate-pulse' : 'text-muted-foreground'}`} />
-                    <span className="font-semibold text-red-700">{em.status}</span>
-                    <span className="ml-auto text-xs text-muted-foreground">{new Date(em.createdAt).toLocaleString()}</span>
-                  </div>
-                  <div><span className="font-medium">{t('publicEmergency.description')}:</span> {em.description}</div>
-                  <div><span className="font-medium">{t('publicEmergency.status')}:</span> {em.status}</div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
       {upcomingAppointments.length > 0 ? (
         <Card className="shadow-md">
           <CardHeader>
@@ -195,6 +178,53 @@ export default function PatientDashboardClient({ profile, appointments }: any) {
           </CardContent>
         </Card>
       )}
+
+      <Card className="w-full shadow-md">
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <ShieldAlert className="w-6 h-6 mr-2 text-accent" />
+            {t('patientDashboard.myEmergencies')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="emergency-form">
+              <AccordionTrigger>{t('patientDashboard.requestEmergency')}</AccordionTrigger>
+              <AccordionContent>
+                <EmergencyForm onSuccess={() => {
+                  setLoadingEmergencies(false);
+                  fetch('/api/emergencies?mine=1', { credentials: 'include' })
+                    .then(res => res.json())
+                    .then(data => {
+                      console.log(data);
+                      if (data.success) setEmergencies(data.emergencies);
+                      setLoadingEmergencies(false);
+                    });
+                }} />
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+          {loadingEmergencies ? (
+            <div className="text-center text-muted-foreground">{t('loading')}</div>
+          ) : emergencies.length === 0 ? (
+            <div className="text-center text-muted-foreground">{t('patientDashboard.noEmergencies')}</div>
+          ) : (
+            <ul className="space-y-3 mt-4">
+              {emergencies.map((em: any) => (
+                <li key={em.id} className={`p-3 border rounded-md flex flex-col gap-1 ${em.status === 'PENDING' ? 'bg-red-50 border-red-400' : 'bg-background'}`}>
+                  <div className="flex items-center gap-2">
+                    <ShieldAlert className={`w-5 h-5 ${em.status === 'PENDING' ? 'text-red-600 animate-pulse' : 'text-muted-foreground'}`} />
+                    <span className="font-semibold text-red-700">{t(`emergencyStatus.${em.status.toLowerCase()}`)}</span>
+                    <span className="ml-auto text-xs text-muted-foreground">{new Date(em.createdAt).toLocaleString()}</span>
+                  </div>
+                  <div><span className="font-medium">{t('publicEmergency.description')}:</span> {em.description}</div>
+                  <div><span className="font-medium">{t('publicEmergency.status')}:</span> {t(`emergencyStatus.${em.status.toLowerCase()}`)}</div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 } 

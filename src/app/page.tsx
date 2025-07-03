@@ -9,6 +9,7 @@ import { User, Briefcase, LogIn, AlertTriangle } from 'lucide-react'; // Briefca
 import Link from 'next/link';
 import { useLanguage } from '@/context/language-context';
 import Image from 'next/image';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export function HomePage() {
   const { t } = useLanguage();
@@ -22,6 +23,18 @@ export function HomePage() {
       else if (role === 'DENTIST') router.replace('/dentist/dashboard');
     }
   }, [session, status, router]);
+
+  if (status === 'loading') {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Skeleton className="w-16 h-16 rounded-full bg-accent animate-pulse" />
+      </div>
+    );
+  }
+
+  if (status === 'authenticated' && session?.user) {
+    return null; // El useEffect se encarga del redirect
+  }
 
   return (
     <div className="relative flex flex-col items-center justify-center min-h-[calc(100vh-12rem)] py-12">

@@ -65,5 +65,4 @@ export async function signupAction(data: SignupInput) {
   });
 
   // 4) Redirige a /login
-  redirect("/login");
 }

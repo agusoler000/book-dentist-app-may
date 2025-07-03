@@ -3,8 +3,9 @@ import prisma from '@/lib/prisma';
 import { AppointmentStatus } from '@prisma/client';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import '@/lib/socket-server';
 
-export async function POST(req: Request) {
+export async function POST(req: Request, res: any) {
   const session = await getServerSession(authOptions);
   const formData = await req.formData();
   const userPatientId = formData.get('patientId'); // User.id
@@ -66,7 +67,8 @@ export async function POST(req: Request) {
         await prisma.notification.create({
           data: {
             userId: patientWithUser.userId,
-            type: 'APPOINTMENT',
+            type: 'appointment',
+            event: 'appointment',
             title: 'Cita agendada',
             message: `Tu cita con el Dr. ${dentistWithUser.user?.name || 'Dentista'} fue agendada para el ${fecha} a las ${hora}.`,
             link: '/patient/dashboard',
@@ -83,7 +85,8 @@ export async function POST(req: Request) {
         await prisma.notification.create({
           data: {
             userId: dentistWithUser.userId,
-            type: 'APPOINTMENT',
+            type: 'appointment',
+            event: 'appointment',
             title: 'Nueva cita asignada',
             message: `Tienes una nueva cita con ${patientWithUser.user?.name || 'Paciente'} el ${fecha} a las ${hora}.`,
             link: '/dentist/dashboard',
@@ -96,7 +99,13 @@ export async function POST(req: Request) {
     } else {
       console.log("⚠️ No se crearon notificaciones porque:", { patient: !!patientWithUser, dentist: !!dentistWithUser });
     }
-    
+
+    // Emitir eventos de WebSocket
+    if (global.io) {
+      global.io.to('appointments').emit('appointments:update');
+      global.io.to('notifications').emit('notifications:update');
+    }
+
     return NextResponse.json({ success: true, message: 'Appointment booked successfully!' });
   } catch (error) {
     console.error("❌ Error general en POST /api/appointments:", error);
@@ -120,19 +129,37 @@ async function completePastAppointments() {
 // GET: /api/appointments?dentistId=...
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
+  const mine = searchParams.get('mine');
   const dentistId = searchParams.get('dentistId');
-  if (!dentistId) {
-    return NextResponse.json({ success: false, message: 'Missing dentistId' }, { status: 400 });
-  }
-  try {
-    await completePastAppointments();
+  const session = await getServerSession(authOptions);
+
+  if (mine && session && (session.user as any).role === 'PATIENT') {
+    // Citas del paciente logueado
+    const patient = await prisma.patient.findUnique({ where: { userId: (session.user as any).id } });
+    if (!patient) {
+      return NextResponse.json({ success: true, appointments: [] });
+    }
     const appointments = await prisma.appointment.findMany({
-      where: { dentistId },
-      include: { patient: { include: { user: true } } },
+      where: { patientId: patient.id },
+      include: { dentist: { include: { user: true } } },
       orderBy: { date: 'desc' },
     });
     return NextResponse.json({ success: true, appointments });
-  } catch (error) {
-    return NextResponse.json({ success: false, message: 'Failed to fetch appointments.' }, { status: 500 });
   }
+
+  if (dentistId) {
+    try {
+      await completePastAppointments();
+      const appointments = await prisma.appointment.findMany({
+        where: { dentistId },
+        include: { patient: { include: { user: true } } },
+        orderBy: { date: 'desc' },
+      });
+      return NextResponse.json({ success: true, appointments });
+    } catch (error) {
+      return NextResponse.json({ success: false, message: 'Failed to fetch appointments.' }, { status: 500 });
+    }
+  }
+
+  return NextResponse.json({ success: false, message: 'Missing parameters' }, { status: 400 });
 } 

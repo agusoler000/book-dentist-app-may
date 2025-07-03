@@ -2,11 +2,22 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import '@/lib/socket-server';
 
-export async function POST(req: Request) {
+function emitSocketEvent(event: string) {
+  // @ts-ignore
+  if (globalThis.io) {
+    globalThis.io.to('emergencies').emit('emergencies:update');
+    if (event === 'notifications:update') {
+      globalThis.io.to('notifications').emit('notifications:update');
+    }
+  }
+}
+
+export async function POST(req: Request, res: any) {
   let session = await getServerSession(authOptions);
   let body = await req.json();
-  let { description, name, phone, dni } = body;
+  let { description, name, phone, dni, dentistId } = body;
 
   if (!description || !name || !dni) {
     return NextResponse.json({ success: false, error: "Description, name, and dni are required." }, { status: 400 });
@@ -32,27 +43,50 @@ export async function POST(req: Request) {
       dni,
       status: 'PENDING',
       patientId,
+      dentistId: dentistId && dentistId !== 'ALL' ? dentistId : undefined,
     },
   });
 
-  // Notificar a todos los dentistas disponibles para emergencias
-  const dentists = await prisma.dentist.findMany({
-    where: { isAvailableForEmergency: true },
-    include: { user: true },
-  });
-  await Promise.all(dentists.map(dentist =>
-    prisma.notification.create({
-      data: {
-        userId: dentist.userId,
-        type: 'EMERGENCY',
-        title: 'Nueva emergencia recibida',
-        message: `¡Nueva urgencia! Paciente: ${name}, DNI: ${dni}, Tel: ${phone}. Descripción: ${description}`,
-        link: '/dentist/dashboard',
-      },
-    })
-  ));
+  if (dentistId && dentistId !== 'ALL') {
+    // Notificar solo al dentista seleccionado
+    const dentist = await prisma.dentist.findUnique({ where: { id: dentistId }, include: { user: true } });
+    if (dentist && dentist.user) {
+      await prisma.notification.create({
+        data: {
+          userId: dentist.userId,
+          type: 'emergency',
+          event: 'emergency',
+          title: 'Nueva emergencia recibida',
+          message: `¡Nueva urgencia! Paciente: ${name}, DNI: ${dni}, Tel: ${phone}. Descripción: ${description}`,
+          link: '/dentist/dashboard',
+        },
+      });
+    }
+  } else {
+    // Notificar a todos los dentistas disponibles para emergencias
+    const dentists = await prisma.dentist.findMany({
+      where: { isAvailableForEmergency: true },
+      include: { user: true },
+    });
+    await Promise.all(dentists.map(dentist =>
+      prisma.notification.create({
+        data: {
+          userId: dentist.userId,
+          type: 'emergency',
+          event: 'emergency',
+          title: 'Nueva emergencia recibida',
+          message: `¡Nueva urgencia! Paciente: ${name}, DNI: ${dni}, Tel: ${phone}. Descripción: ${description}`,
+          link: '/dentist/dashboard',
+        },
+      })
+    ));
+  }
 
-  // TODO: Enviar WhatsApp automático aquí usando una API externa
+  // Emitir eventos de WebSocket
+  if (global.io) {
+    global.io.to('emergencies').emit('emergencies:update');
+    global.io.to('notifications').emit('notifications:update');
+  }
 
   return NextResponse.json({ success: true, emergency });
 }
@@ -61,6 +95,17 @@ export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
   const url = new URL(req.url);
   const mine = url.searchParams.get('mine');
+  const patientId = url.searchParams.get('patientId');
+
+  if (patientId) {
+    // Buscar emergencias por patientId explícito
+    const emergencies = await prisma.emergency.findMany({
+      where: { patientId },
+      orderBy: { createdAt: 'desc' },
+    });
+    return NextResponse.json({ success: true, emergencies });
+  }
+
   if (mine && session && (session.user as any).role === 'PATIENT') {
     // Emergencias del paciente logueado
     const patient = await prisma.patient.findUnique({ where: { userId: (session.user as any).id } });

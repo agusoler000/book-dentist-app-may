@@ -3,7 +3,8 @@
 import { FormEvent, useState } from "react";
 import { useToast }            from "@/hooks/use-toast";
 import { useRouter }           from "next/navigation";
-
+import { useLanguage } from '@/context/language-context';
+import { signIn } from "next-auth/react";
 
 import { Loader2, MountainIcon } from "lucide-react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -28,36 +29,54 @@ export default function SignupPage() {
 
   const { toast } = useToast();
   const router    = useRouter();
+  const { t } = useLanguage();
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (password !== confirmPassword) {
-      toast({ title: "Error", description: "Passwords do not match.", variant: "destructive" });
+      toast({ title: t('signup.error'), description: t('signup.passwords_no_match'), variant: 'destructive' });
       return;
     }
     setLoading(true);
 
-  const data: SignupInput = {
-  fullName,
-  email,
-  password,
-  accountType,
-  phone:     phone || undefined,
-  dni:       accountType === "patient" ? dni : undefined,
-  dateOfBirth: accountType === "patient" ? dateOfBirth : undefined,
-  specialty: accountType === "dentist" ? specialty : undefined,
-  bio:       accountType === "dentist" ? bio : undefined,
-};
+    const data: SignupInput = {
+      fullName,
+      email,
+      password,
+      accountType,
+      phone:     phone || undefined,
+      dni:       accountType === "patient" ? dni : undefined,
+      dateOfBirth: accountType === "patient" ? dateOfBirth : undefined,
+      specialty: accountType === "dentist" ? specialty : undefined,
+      bio:       accountType === "dentist" ? bio : undefined,
+    };
 
     try {
       const result = await signupAction(data);
       if (result?.success === false) {
-        toast({ title: "Signup Failed", description: result.message, variant: "destructive" });
+        toast({ title: t('signup.failed'), description: result.message, variant: 'destructive' });
         setLoading(false);
+      } else {
+        // Login automático tras registro exitoso
+        const loginResult = await signIn("credentials", {
+          redirect: false,
+          email,
+          password,
+        });
+        setLoading(false);
+        if (loginResult?.ok) {
+          // Redirigir según el rol
+          if (accountType === "dentist") {
+            router.push("/dentist/dashboard");
+          } else {
+            router.push("/patient/dashboard");
+          }
+        } else {
+          toast({ title: t('signup.error'), description: t('signup.auto_login_failed'), variant: 'destructive' });
+        }
       }
-      // on success, redirect happens in the Server Action
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast({ title: t('signup.error'), description: err.message, variant: 'destructive' });
       setLoading(false);
     }
   };
@@ -67,13 +86,13 @@ export default function SignupPage() {
       <Card className="max-w-lg w-full shadow-2xl">
         <CardHeader className="text-center bg-primary/10 p-8 rounded-t-lg">
           <MountainIcon className="h-8 w-8 mx-auto text-primary" />
-          <CardTitle>Create Your Account</CardTitle>
-          <CardDescription>Join COEC today—it&apos;s quick and easy!</CardDescription>
+          <CardTitle>{t('signup.title')}</CardTitle>
+          <CardDescription>{t('signup.subtitle')}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4 p-6">
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="fullName">Full Name</Label>
+              <Label htmlFor="fullName">{t('signup.full_name')}</Label>
               <Input
                 id="fullName"
                 type="text"
@@ -84,7 +103,7 @@ export default function SignupPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t('signup.email')}</Label>
               <Input
                 id="email"
                 type="email"
@@ -96,7 +115,7 @@ export default function SignupPage() {
             </div>
             <div className="grid md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">{t('signup.password')}</Label>
                 <Input
                   id="password"
                   type="password"
@@ -107,7 +126,7 @@ export default function SignupPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
+                <Label htmlFor="confirmPassword">{t('signup.confirm_password')}</Label>
                 <Input
                   id="confirmPassword"
                   type="password"
@@ -119,7 +138,7 @@ export default function SignupPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="phone">Phone</Label>
+              <Label htmlFor="phone">{t('signup.phone')}</Label>
               <Input
                 id="phone"
                 type="tel"
@@ -129,12 +148,12 @@ export default function SignupPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="accountType">I am a…</Label>
+              <Label htmlFor="accountType">{t('signup.account_type')}</Label>
               <Select value={accountType} onValueChange={v => setAccountType(v as any)} disabled={loading}>
                 <SelectTrigger id="accountType"><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="patient">Patient</SelectItem>
-                  <SelectItem value="dentist">Dentist</SelectItem>
+                  <SelectItem value="patient">{t('signup.patient')}</SelectItem>
+                  <SelectItem value="dentist">{t('signup.dentist')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -142,7 +161,7 @@ export default function SignupPage() {
             {accountType === "patient" && (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="dni">DNI / Passport</Label>
+                  <Label htmlFor="dni">{t('signup.dni')}</Label>
                   <Input
                     id="dni"
                     type="text"
@@ -150,11 +169,11 @@ export default function SignupPage() {
                     value={dni}
                     onChange={e => setDni(e.target.value)}
                     disabled={loading}
-                    placeholder="DNI / Passport"
+                    placeholder={t('signup.dni_placeholder')}
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="dateOfBirth">Date of Birth</Label>
+                  <Label htmlFor="dateOfBirth">{t('signup.date_of_birth')}</Label>
                   <Input
                     id="dateOfBirth"
                     type="date"
@@ -169,7 +188,7 @@ export default function SignupPage() {
             {accountType === "dentist" && (
               <>
                 <div className="space-y-2">
-                  <Label htmlFor="specialty">Specialty</Label>
+                  <Label htmlFor="specialty">{t('signup.specialty')}</Label>
                   <Input
                     id="specialty"
                     value={specialty}
@@ -178,7 +197,7 @@ export default function SignupPage() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="bio">Bio</Label>
+                  <Label htmlFor="bio">{t('signup.bio')}</Label>
                   <Input
                     id="bio"
                     value={bio}
@@ -191,14 +210,14 @@ export default function SignupPage() {
 
             <Button type="submit" className="w-full" disabled={loading}>
               {loading && <Loader2 className="animate-spin mr-2 h-4 w-4" />}
-              {loading ? "Signing Up…" : "Sign Up"}
+              {loading ? t('signup.signing_up') : t('signup.sign_up')}
             </Button>
           </form>
         </CardContent>
         <CardFooter className="text-center">
           <p className="text-sm">
-            Already have an account?{" "}
-            <a href="/login" className="text-accent hover:underline">Log In</a>
+            {t('signup.already_have_account')}{' '}
+            <a href="/login" className="text-primary underline">{t('signup.login')}</a>
           </p>
         </CardFooter>
       </Card>

@@ -64,6 +64,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
           title: notifTitle,
           message: notifMsg,
           link: '/patient/dashboard',
+          event: 'appointment',
         },
       });
     }

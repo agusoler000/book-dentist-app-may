@@ -159,6 +159,7 @@ model Notification {
   read      Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  event     String? // 'emergency', 'appointment', etc
 }
 
 model Emergency {

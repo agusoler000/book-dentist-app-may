@@ -7,6 +7,9 @@ import Link from 'next/link';
 import { format, parseISO, isToday, isFuture } from 'date-fns';
 import { useEffect, useState } from "react";
 import { useDentistEmergencyState } from "@/context/global-store";
+import { useToast } from '@/hooks/use-toast';
+import { getSocket } from '@/lib/socket';
+import { useDentistNotifications } from '@/hooks/use-dentist-notifications';
 
 function getDateObj(date: string | Date) {
   return typeof date === 'string' ? parseISO(date) : date;
@@ -36,37 +39,72 @@ export default function DentistDashboardClient({ profile, appointments, initialE
   const isAvailable = useDentistEmergencyState(s => s.isAvailableForEmergency);
   const { t } = useLanguage();
   const currentDentist = profile.dentist;
-  const todayAppointments = appointments
-    .filter((app: any) => {
-      if (!app.date) return false;
-      return isToday(getDateObj(app.date)) && app.status === 'SCHEDULED';
-    })
-    .sort((a: any, b: any) => new Date(`1970/01/01 ${a.time}`).getTime() - new Date(`1970/01/01 ${b.time}`).getTime());
-  const upcomingAppointmentsCount = appointments
-    .filter((app: any) => {
-      if (!app.date) return false;
-      return isFuture(getDateObj(app.date)) && app.status === 'SCHEDULED';
-    })
-    .length;
+  const [appointmentsState, setAppointmentsState] = useState<any[]>(appointments);
   const [emergencies, setEmergencies] = useState<any[]>([]);
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const { toast } = useToast();
 
-  useEffect(() => {
-    setIsAvailable(initialEmergencyAvailable);
-    fetch('/api/emergencies')
+  const reloadEmergencies = () => {
+    fetch('/api/emergencies', { credentials: 'include' })
       .then(res => res.json())
       .then(data => {
         if (data.success) setEmergencies(data.emergencies);
       });
-  }, [initialEmergencyAvailable, setIsAvailable]);
+  };
+  const reloadAppointments = () => {
+    fetch(`/api/appointments?dentistId=${currentDentist.id}`, { credentials: 'include' })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) setAppointmentsState(data.appointments);
+      });
+  };
+  useDentistNotifications({ reloadEmergencies, reloadAppointments });
+
+  useEffect(() => {
+    setIsAvailable(initialEmergencyAvailable);
+    const socket = getSocket();
+    const fetchEmergencies = () => {
+      fetch('/api/emergencies', { credentials: 'include' })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) setEmergencies(data.emergencies);
+        });
+    };
+    const fetchAppointments = () => {
+      fetch(`/api/appointments?dentistId=${currentDentist.id}`, { credentials: 'include' })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) setAppointmentsState(data.appointments);
+        });
+    };
+    fetchEmergencies();
+    fetchAppointments();
+    socket.emit('join', 'emergencies');
+    socket.emit('join', 'appointments');
+    socket.on('emergencies:update', fetchEmergencies);
+    socket.on('appointments:update', fetchAppointments);
+    return () => {
+      socket.off('emergencies:update', fetchEmergencies);
+      socket.off('appointments:update', fetchAppointments);
+      socket.emit('leave', 'emergencies');
+      socket.emit('leave', 'appointments');
+    };
+  }, [initialEmergencyAvailable, setIsAvailable, currentDentist.id]);
 
   const handleUpdateStatus = async (id: string, status: 'APPROVED' | 'CANCELLED' | 'FINISHED') => {
     setLoadingId(id);
-    await fetch(`/api/emergencies/${id}`, {
+    const res = await fetch(`/api/emergencies/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),
     });
+    if (res.status === 409) {
+      toast({
+        title: t('dentistDashboard.emergency', {}),
+        description: t('emergency.alreadyClaimed'),
+        variant: 'destructive',
+      });
+    }
     // Refetch
     fetch('/api/emergencies')
       .then(res => res.json())
@@ -75,6 +113,19 @@ export default function DentistDashboardClient({ profile, appointments, initialE
       });
     setLoadingId(null);
   };
+
+  const todayAppointments = appointmentsState
+    .filter((app: any) => {
+      if (!app.date) return false;
+      return isToday(getDateObj(app.date)) && app.status === 'SCHEDULED';
+    })
+    .sort((a: any, b: any) => new Date(`1970/01/01 ${a.time}`).getTime() - new Date(`1970/01/01 ${b.time}`).getTime());
+  const upcomingAppointmentsCount = appointmentsState
+    .filter((app: any) => {
+      if (!app.date) return false;
+      return isFuture(getDateObj(app.date)) && app.status === 'SCHEDULED';
+    })
+    .length;
 
   return (
     <div className="space-y-8">
@@ -176,11 +227,11 @@ export default function DentistDashboardClient({ profile, appointments, initialE
           <CardTitle className="flex items-center"><CalendarDays className="w-6 h-6 mr-2 text-accent"/>{t('dentistDashboard.upcomingAppointments')}</CardTitle>
         </CardHeader>
         <CardContent>
-          {appointments.filter((app: any) => getDateObj(app.date) > new Date() && app.status === 'SCHEDULED')
+          {appointmentsState.filter((app: any) => getDateObj(app.date) > new Date() && app.status === 'SCHEDULED')
             .sort((a: any, b: any) => getDateObj(a.date).getTime() - getDateObj(b.date).getTime())
             .length > 0 ? (
             <ul className="space-y-3">
-              {appointments.filter((app: any) => getDateObj(app.date) > new Date() && app.status === 'SCHEDULED')
+              {appointmentsState.filter((app: any) => getDateObj(app.date) > new Date() && app.status === 'SCHEDULED')
                 .sort((a: any, b: any) => getDateObj(a.date).getTime() - getDateObj(b.date).getTime())
                 .map((app: any) => (
                   <li key={app.id} className="p-3 border rounded-md bg-background hover:bg-muted/50 transition-colors">
@@ -218,7 +269,7 @@ export default function DentistDashboardClient({ profile, appointments, initialE
                   <div><span className="font-medium">{t('dentistDashboard.patient')}:</span> {em.name} ({em.dni})</div>
                   <div><span className="font-medium">{t('dentistDashboard.phone')}:</span> {em.phone}</div>
                   <div><span className="font-medium">{t('dentistDashboard.description')}:</span> {em.description}</div>
-                  <div><span className="font-medium">{t('dentistDashboard.status')}:</span> {em.status}</div>
+                  <div><span className="font-medium">{t('dentistDashboard.status')}:</span> {t('emergencyStatus.' + em.status.toLowerCase())}</div>
                   {em.status === 'PENDING' && (
                     <div className="flex gap-2 mt-2">
                       <Button size="sm" variant="default" className="bg-green-600 hover:bg-green-700 text-white" disabled={loadingId === em.id} onClick={() => handleUpdateStatus(em.id, 'APPROVED')}>

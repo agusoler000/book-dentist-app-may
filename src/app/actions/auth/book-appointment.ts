@@ -54,6 +54,7 @@ export async function bookAppointmentAction(data: BookAppointmentInput) {
             title: 'Cita agendada',
             message: `Tu cita con el Dr. ${dentist.user?.name || 'Dentista'} fue agendada para el ${fecha} a las ${hora}.`,
             link: '/patient/dashboard',
+            event: 'appointment',
           },
         });
         console.log("✅ Notificación para paciente creada");
@@ -71,6 +72,7 @@ export async function bookAppointmentAction(data: BookAppointmentInput) {
             title: 'Nueva cita asignada',
             message: `Tienes una nueva cita con ${patient.user?.name || 'Paciente'} el ${fecha} a las ${hora}.`,
             link: '/dentist/dashboard',
+            event: 'appointment',
           },
         });
         console.log("✅ Notificación para dentista creada");

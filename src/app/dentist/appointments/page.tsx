@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { Pencil, Check, X } from 'lucide-react';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 import { Calendar } from '@/components/ui/calendar';
+import { useDentistNotifications } from '@/hooks/use-dentist-notifications';
 
 export default function DentistAppointmentsPage() {
   const { t, locale } = useLanguage();
@@ -44,6 +45,7 @@ export default function DentistAppointmentsPage() {
   const [cancelJustification, setCancelJustification] = useState("");
   const [cancelError, setCancelError] = useState("");
   const [cancelingId, setCancelingId] = useState<string|null>(null);
+  const [loadingAppointments, setLoadingAppointments] = useState(true);
 
   useEffect(() => {
     // Verificar sesión y rol
@@ -66,6 +68,19 @@ export default function DentistAppointmentsPage() {
       }
     });
   }, [router]);
+
+  useDentistNotifications({ reloadEmergencies: () => {}, reloadAppointments: () => {
+    if (currentUser && userType === 'dentist') {
+      setLoadingAppointments(true);
+      fetch(`/api/appointments?dentistId=${currentUser.dentistId}`)
+        .then(res => res.json())
+        .then(data => {
+          setAppointments(data.appointments || []);
+          setLoadingAppointments(false);
+        })
+        .catch(() => setLoadingAppointments(false));
+    }
+  }});
 
   const handleStatus = async (id: string, status: 'SCHEDULED' | 'CANCELLED') => {
     setLoadingId(id + status);
