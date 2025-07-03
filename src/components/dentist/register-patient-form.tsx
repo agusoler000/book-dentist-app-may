@@ -24,6 +24,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
 import { CalendarIcon, Loader2 } from "lucide-react"
+import PhoneInput from 'react-phone-input-2';
+import 'react-phone-input-2/lib/style.css';
 
 
 const createPatientFormSchema = (t: Function) => z.object({
@@ -132,7 +134,15 @@ export default function RegisterPatientForm() {
                 <FormItem>
                   <FormLabel>{t('patientRegistration.phone')}</FormLabel>
                   <FormControl>
-                    <Input type="tel" placeholder="555-123-4567" {...field} />
+                    <PhoneInput
+                      country={'ar'}
+                      value={field.value}
+                      onChange={value => field.onChange(value)}
+                      inputProps={{ name: 'phone', required: false, disabled: isLoading }}
+                      inputClass="w-full"
+                      containerClass="w-full"
+                      enableSearch
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

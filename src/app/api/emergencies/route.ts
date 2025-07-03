@@ -3,6 +3,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import '@/lib/socket-server';
+import { sendWhatsApp } from '@/lib/send-whatsapp';
 
 function emitSocketEvent(event: string) {
   // @ts-ignore
@@ -59,8 +60,16 @@ export async function POST(req: Request, res: any) {
           title: 'Nueva emergencia recibida',
           message: `¡Nueva urgencia! Paciente: ${name}, DNI: ${dni}, Tel: ${phone}. Descripción: ${description}`,
           link: '/dentist/dashboard',
-        },
+        }
       });
+      // Enviar WhatsApp si tiene teléfono
+      console.log('[Depuración] Teléfono del dentista:', dentist.phone);
+      if (dentist.phone) {
+        await sendWhatsApp(
+          dentist.phone,
+          `Nueva urgencia:\nPaciente: ${name}\nDNI: ${dni}\nTel: ${phone}\nDescripción: ${description}`
+        );
+      }
     }
   } else {
     // Notificar a todos los dentistas disponibles para emergencias
@@ -68,8 +77,8 @@ export async function POST(req: Request, res: any) {
       where: { isAvailableForEmergency: true },
       include: { user: true },
     });
-    await Promise.all(dentists.map(dentist =>
-      prisma.notification.create({
+    await Promise.all(dentists.map(async dentist => {
+      await prisma.notification.create({
         data: {
           userId: dentist.userId,
           type: 'emergency',
@@ -77,9 +86,17 @@ export async function POST(req: Request, res: any) {
           title: 'Nueva emergencia recibida',
           message: `¡Nueva urgencia! Paciente: ${name}, DNI: ${dni}, Tel: ${phone}. Descripción: ${description}`,
           link: '/dentist/dashboard',
-        },
-      })
-    ));
+        }
+      });
+      // Enviar WhatsApp si tiene teléfono
+      console.log('[Depuración] Teléfono del dentista:', dentist.phone);
+      if (dentist.phone) {
+        await sendWhatsApp(
+          dentist.phone,
+          `Nueva urgencia:\nPaciente: ${name}\nDNI: ${dni}\nTel: ${phone}\nDescripción: ${description}`
+        );
+      }
+    }));
   }
 
   // Emitir eventos de WebSocket

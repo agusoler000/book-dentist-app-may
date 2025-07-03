@@ -15,6 +15,8 @@ import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, Dialog
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import PhoneInput from 'react-phone-input-2';
+import 'react-phone-input-2/lib/style.css';
 
 interface PatientProfileViewProps {
   patient: Patient;
@@ -166,7 +168,17 @@ export default function PatientProfileView({ patient, appointments }: PatientPro
                             <FormField name="phone" control={form.control} render={({ field }) => (
                               <FormItem>
                                 <FormLabel>{t('patientProfile.phone')}</FormLabel>
-                                <FormControl><Input {...field} /></FormControl>
+                                <FormControl>
+                                  <PhoneInput
+                                    country={'ar'}
+                                    value={field.value}
+                                    onChange={value => field.onChange(value)}
+                                    inputProps={{ name: 'phone', required: false, disabled: loading }}
+                                    inputClass="w-full"
+                                    containerClass="w-full"
+                                    enableSearch
+                                  />
+                                </FormControl>
                                 <FormMessage />
                               </FormItem>
                             )} />

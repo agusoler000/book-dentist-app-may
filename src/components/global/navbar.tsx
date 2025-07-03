@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Menu, Briefcase, LogOut, UserCircle, LogIn, UserPlus, Bell } from 'lucide-react';
+import { Menu, Briefcase, LogOut, UserCircle, LogIn, UserPlus, Bell, Loader2, Circle, CircleDot } from 'lucide-react';
 import LanguageSwitcher from './language-switcher';
 import { useLanguage } from '@/context/language-context';
 import { useAuth } from '@/context/auth-context'; // Import useAuth
@@ -16,27 +16,103 @@ function NotificationsBell() {
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [markingRead, setMarkingRead] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const PAGE_SIZE = 10;
+  const [allLoaded, setAllLoaded] = useState(false);
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  // Polling cada 5 segundos
+  // Modifica fetchNotifications para paginar correctamente
   useEffect(() => {
     if (!currentUser) return;
     let interval: any;
-    const fetchNotifications = () => {
-      fetch('/api/notifications')
+    const fetchNotifications = (reset = false) => {
+      const skip = reset ? 0 : notifications.length;
+      const url = `/api/notifications?limit=${PAGE_SIZE}&skip=${skip}`;
+      fetch(url)
         .then(res => res.json())
         .then(data => {
-          if (data.success) setNotifications(data.notifications);
+          if (data.success) {
+            setNotifications(prev => {
+              if (reset) return data.notifications;
+              // Evita duplicados
+              const ids = new Set(prev.map((n: any) => n.id));
+              return [...prev, ...data.notifications.filter((n: any) => !ids.has(n.id))];
+            });
+            setAllLoaded(data.notifications.length < PAGE_SIZE);
+          }
         });
     };
-    fetchNotifications();
-    interval = setInterval(fetchNotifications, 5000);
+    fetchNotifications(true); // reset on mount
+    interval = setInterval(() => fetchNotifications(true), 5000);
     return () => clearInterval(interval);
+    // eslint-disable-next-line
   }, [currentUser]);
 
+  // Infinite scroll handler
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget;
+    if (scrollTop + clientHeight >= scrollHeight - 10 && !allLoaded && !loadingMore) {
+      setLoadingMore(true);
+      const skip = notifications.length;
+      const url = `/api/notifications?limit=${PAGE_SIZE}&skip=${skip}`;
+      fetch(url)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            setNotifications(prev => {
+              const ids = new Set(prev.map((n: any) => n.id));
+              return [...prev, ...data.notifications.filter((n: any) => !ids.has(n.id))];
+            });
+            setAllLoaded(data.notifications.length < PAGE_SIZE);
+          }
+        })
+        .finally(() => setLoadingMore(false));
+    }
+  };
+
+  const handleLoadMore = () => {
+    setLoadingMore(true);
+    const skip = notifications.length;
+    const url = `/api/notifications?limit=${PAGE_SIZE}&skip=${skip}`;
+    fetch(url)
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          setNotifications(prev => {
+            const ids = new Set(prev.map((n: any) => n.id));
+            return [...prev, ...data.notifications.filter((n: any) => !ids.has(n.id))];
+          });
+          setAllLoaded(data.notifications.length < PAGE_SIZE);
+        }
+      })
+      .finally(() => setLoadingMore(false));
+  };
+
+  // Solo mostrar no leídas y las últimas 2 leídas
+  // const unread = notifications.filter(n => !n.read);
+  // const read = notifications.filter(n => n.read).slice(0, 2);
+  // const displayNotifications = [...unread, ...read];
+
+  // Mostrar todas las notificaciones cargadas (acumuladas)
+  const displayNotifications = notifications;
+
   const markAsRead = async (id: string) => {
+    setMarkingRead(id);
     await fetch(`/api/notifications/${id}/read`, { method: 'PATCH' });
     setNotifications(notifications => notifications.map(n => n.id === id ? { ...n, read: true } : n));
+    setMarkingRead(null);
+  };
+
+  const markAllAsRead = async () => {
+    setMarkingRead('all');
+    await Promise.all(
+      notifications.filter(n => !n.read).map(n =>
+        fetch(`/api/notifications/${n.id}/read`, { method: 'PATCH' })
+      )
+    );
+    setNotifications(notifications => notifications.map(n => ({ ...n, read: true })));
+    setMarkingRead(null);
   };
 
   if (!currentUser) return null;
@@ -54,25 +130,68 @@ function NotificationsBell() {
         )}
       </button>
       {open && (
-        <div className="absolute right-0 mt-2 w-80 max-h-96 bg-white border rounded shadow-lg z-50 overflow-y-auto">
-          <div className="p-3 border-b font-semibold flex items-center justify-between">
+        <div className="absolute right-0 mt-2 w-80 max-h-96 min-h-[300px] bg-white border rounded shadow-lg z-50 overflow-y-auto" onScroll={handleScroll}>
+          <div className="p-3 border-b font-semibold flex items-center justify-between gap-2">
             <span>{t('notifications.title')}</span>
-            <a href="/notifications" className="text-xs text-accent hover:underline">{t('notifications.seeAll')}</a>
+            <div className="flex gap-2 items-center">
+              <button
+                onClick={markAllAsRead}
+                className={`text-xs text-accent hover:underline bg-transparent border-none p-0 m-0 flex items-center transition-colors ${markingRead === 'all' ? 'opacity-70' : ''}`}
+                disabled={unreadCount === 0 || markingRead === 'all'}
+                style={{ background: 'none' }}
+              >
+                {markingRead === 'all' && <Loader2 className="w-4 h-4 animate-spin inline mr-1" />}
+                {t('notifications.markAllRead')}
+              </button>
+              <a href="/notifications" className="text-xs text-accent hover:underline">{t('notifications.seeAll')}</a>
+            </div>
           </div>
           {loading ? (
             <div className="p-4 text-center text-muted-foreground">{t('notifications.loading')}</div>
-          ) : notifications.length === 0 ? (
+          ) : displayNotifications.length === 0 ? (
             <div className="p-4 text-center text-muted-foreground">{t('notifications.empty')}</div>
           ) : (
             <ul>
-              {notifications.map(n => (
-                <li key={n.id} className={`p-3 border-b last:border-b-0 cursor-pointer hover:bg-muted/30 ${!n.read ? 'bg-accent/10' : ''}`}
-                  onClick={() => { if (!n.read) markAsRead(n.id); if (n.link) window.location.href = n.link; }}>
-                  <div className="font-medium">{n.title}</div>
-                  <div className="text-sm text-muted-foreground">{n.message}</div>
-                  <div className="text-xs text-muted-foreground mt-1">{new Date(n.createdAt).toLocaleString()}</div>
+              {displayNotifications.map(n => (
+                <li key={n.id} className={`p-3 border-b last:border-b-0 flex items-center justify-between gap-2 cursor-pointer hover:bg-muted/30 ${!n.read ? 'bg-accent/10' : ''}`}
+                >
+                  <div className="flex-1" onClick={() => { if (!n.read) markAsRead(n.id); if (n.link) window.location.href = n.link; }}>
+                    <div className="font-medium">{n.title}</div>
+                    <div className="text-sm text-muted-foreground">{n.message}</div>
+                    <div className="text-xs text-muted-foreground mt-1">{new Date(n.createdAt).toLocaleString()}</div>
+                  </div>
+                  <button
+                    onClick={e => { e.stopPropagation(); markAsRead(n.id); }}
+                    className="ml-2 flex items-center justify-center w-6 h-6 rounded-full focus:outline-none"
+                    title={t('notifications.markRead')}
+                    disabled={markingRead === n.id || n.read}
+                    style={{ background: 'none', border: 'none', padding: 0 }}
+                  >
+                    {markingRead === n.id ? (
+                      <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
+                    ) : n.read ? (
+                      <Circle className="w-5 h-5 text-gray-400" />
+                    ) : (
+                      <CircleDot className="w-5 h-5 text-blue-500" />
+                    )}
+                  </button>
                 </li>
               ))}
+              {!allLoaded && !loadingMore && (
+                <li className="p-2 text-center">
+                  <button
+                    onClick={() => handleLoadMore()}
+                    className="text-xs text-accent hover:underline bg-transparent border-none p-0 m-0"
+                  >
+                    {t('notifications.loadMore')}
+                  </button>
+                </li>
+              )}
+              {loadingMore && (
+                <li className="p-2 text-center text-xs text-muted-foreground">
+                  {t('notifications.loading')}
+                </li>
+              )}
             </ul>
           )}
         </div>

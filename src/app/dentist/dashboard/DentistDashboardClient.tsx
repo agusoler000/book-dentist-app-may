@@ -2,7 +2,7 @@
 import { useLanguage } from '@/context/language-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { CalendarDays, UserCog, ShieldCheck, Clock, Users, UserPlus, AlertTriangle, CheckCircle, XCircle, Bell } from 'lucide-react';
+import { CalendarDays, UserCog, ShieldCheck, Clock, Users, UserPlus, AlertTriangle, Check, XCircle, Bell } from 'lucide-react';
 import Link from 'next/link';
 import { format, parseISO, isToday, isFuture } from 'date-fns';
 import { useEffect, useState } from "react";
@@ -10,6 +10,9 @@ import { useDentistEmergencyState } from "@/context/global-store";
 import { useToast } from '@/hooks/use-toast';
 import { getSocket } from '@/lib/socket';
 import { useDentistNotifications } from '@/hooks/use-dentist-notifications';
+import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 function getDateObj(date: string | Date) {
   return typeof date === 'string' ? parseISO(date) : date;
@@ -37,12 +40,14 @@ function DashboardCard({ title, description, icon, link, linkText, disabled = fa
 export default function DentistDashboardClient({ profile, appointments, initialEmergencyAvailable }: any) {
   const setIsAvailable = useDentistEmergencyState(s => s.setIsAvailableForEmergency);
   const isAvailable = useDentistEmergencyState(s => s.isAvailableForEmergency);
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const currentDentist = profile.dentist;
   const [appointmentsState, setAppointmentsState] = useState<any[]>(appointments);
   const [emergencies, setEmergencies] = useState<any[]>([]);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const { toast } = useToast();
+  const [rejectModal, setRejectModal] = useState<{ open: boolean, appointmentId: string | null }>({ open: false, appointmentId: null });
+  const [rejectReason, setRejectReason] = useState('');
 
   const reloadEmergencies = () => {
     fetch('/api/emergencies', { credentials: 'include' })
@@ -127,6 +132,93 @@ export default function DentistDashboardClient({ profile, appointments, initialE
     })
     .length;
 
+  // Citas pendientes
+  const pendingAppointments = appointmentsState.filter((app: any) => app.status === 'PENDING');
+
+  const handleAcceptAppointment = async (id: string) => {
+    setLoadingId(id);
+    await fetch(`/api/appointments/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'SCHEDULED' }),
+    });
+    reloadAppointments();
+    setLoadingId(null);
+  };
+
+  const handleRejectAppointment = async (id: string, reason: string) => {
+    setLoadingId(id);
+    await fetch(`/api/appointments/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'CANCELLED', justification: reason }),
+    });
+    reloadAppointments();
+    setLoadingId(null);
+  };
+
+  function RejectAppointmentDialog({ appointmentId, onReject, loading, iconOnly }: { appointmentId: string, onReject: (id: string, reason: string) => void, loading: boolean, iconOnly?: boolean }) {
+    const { t } = useLanguage();
+    const [open, setOpen] = useState(false);
+    const [reason, setReason] = useState('');
+    const [error, setError] = useState('');
+    return (
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          {iconOnly ? (
+            <button
+              type="button"
+              aria-label={t('dentistDashboard.reject')}
+              className="transition-colors p-1 rounded-md text-red-600 hover:bg-red-100 hover:text-red-800 focus:outline-none"
+              style={{ fontSize: 28, lineHeight: 1 }}
+              disabled={loading}
+              onClick={() => setOpen(true)}
+            >
+              <XCircle className="w-7 h-7" />
+            </button>
+          ) : (
+            <Button size="sm" variant="destructive" className="bg-red-600 hover:bg-red-700 text-white">
+              <XCircle className="w-4 h-4 mr-1" /> {t('dentistDashboard.reject')}
+            </Button>
+          )}
+        </DialogTrigger>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t('dentistDashboard.rejectTitle')}</DialogTitle>
+          </DialogHeader>
+          <div>
+            <label className="block mb-2 font-medium">{t('dentistDashboard.rejectReason')}</label>
+            <Input value={reason} onChange={e => setReason(e.target.value)} placeholder={t('dentistDashboard.rejectReasonPlaceholder')} disabled={loading} />
+            {error && <div className="text-red-600 text-sm mt-1">{error}</div>}
+          </div>
+          <DialogFooter>
+            <Button
+              variant="destructive"
+              disabled={loading}
+              onClick={() => {
+                if (reason.trim().length < 5) {
+                  setError(t('dentistDashboard.rejectReasonValidation'));
+                  return;
+                }
+                setError('');
+                onReject(appointmentId, reason);
+                setOpen(false);
+              }}
+            >
+              {t('dentistDashboard.confirmReject')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  function formatDateLocalized(date: Date, locale: string) {
+    return locale === 'es'
+      ? date.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+      : format(date, 'MMMM d, yyyy');
+  }
+
   return (
     <div className="space-y-8">
       <Card className="shadow-lg border-primary/20">
@@ -151,6 +243,112 @@ export default function DentistDashboardClient({ profile, appointments, initialE
             </div>
            </div>
          </CardContent>
+      </Card>
+      {/* Citas de hoy */}
+      {todayAppointments.length > 0 && (
+        <Card className="shadow-md">
+          <CardHeader>
+            <CardTitle className="flex items-center"><Clock className="w-6 h-6 mr-2 text-accent"/>{t('dentistDashboard.todaysAppointments')}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-3">
+              {todayAppointments.map((app: any) => (
+                <li key={app.id} className="p-3 border rounded-md bg-background hover:bg-muted/50 transition-colors">
+                  <p className="font-semibold">{app.time} - {app.serviceName}</p>
+                  <p className="text-sm text-muted-foreground">{t('dentistDashboard.patient')}: {app.patient?.user?.name || t('dentistDashboard.patient')}</p>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+      {todayAppointments.length === 0 && (
+         <Card className="shadow-md">
+            <CardContent className="pt-6 text-center text-muted-foreground">
+                {t('dentistDashboard.noAppointmentsToday')}
+            </CardContent>
+         </Card>
+       )}
+      {/* Próximas citas */}
+      <Card className="shadow-md">
+        <CardHeader>
+          <CardTitle className="flex items-center"><CalendarDays className="w-6 h-6 mr-2 text-accent"/>{t('dentistDashboard.upcomingAppointments')}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {appointmentsState.filter((app: any) => getDateObj(app.date) > new Date() && app.status === 'SCHEDULED')
+            .sort((a: any, b: any) => getDateObj(a.date).getTime() - getDateObj(b.date).getTime())
+            .length > 0 ? (
+            <ul className="space-y-3">
+              {appointmentsState.filter((app: any) => getDateObj(app.date) > new Date() && app.status === 'SCHEDULED')
+                .sort((a: any, b: any) => getDateObj(a.date).getTime() - getDateObj(b.date).getTime())
+                .map((app: any) => (
+                  <li key={app.id} className="p-3 border rounded-md bg-background hover:bg-muted/50 transition-colors">
+                    <p className="font-semibold">{formatDateLocalized(getDateObj(app.date), locale)} {t('dentistDashboard.at')} {app.time} - {app.serviceName}</p>
+                    <p className="text-base font-medium text-foreground">{t('dentistDashboard.patient')}: {app.patient?.user?.name || t('dentistDashboard.patient')}</p>
+                    <p className="text-xs text-muted-foreground">{t('dentistDashboard.status')}: {t(`appointmentStatus.${app.status.toLowerCase()}`)}</p>
+                  </li>
+                ))}
+            </ul>
+          ) : (
+            <div className="pt-6 text-center text-muted-foreground">
+              {t('dentistDashboard.noUpcomingAppointments')}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+      {/* Citas pendientes */}
+      <Card className="shadow-md">
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Clock className="w-6 h-6 mr-2 text-accent" />
+            {t('dentistDashboard.pendingAppointments')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {pendingAppointments.length > 0 ? (
+            <ul className="space-y-3">
+              {pendingAppointments.map((app: any) => (
+                <li key={app.id} className="p-3 border rounded-md bg-background flex items-center gap-2 justify-between">
+                  <div>
+                    <div className="text-lg font-bold text-foreground">{t('dentistDashboard.patient')}: {app.patient?.user?.name || t('dentistDashboard.patient')}</div>
+                    <div className="text-base font-medium text-foreground">{formatDateLocalized(getDateObj(app.date), locale)} {t('dentistDashboard.at')} {app.time}</div>
+                    <div className="text-sm font-medium text-foreground mt-2">{app.serviceName}</div>
+                    {app.notes && (
+                      <div className="text-xs text-muted-foreground mt-1 block">{app.notes}</div>
+                    )}
+                  </div>
+                  <div className="flex gap-2 ml-auto">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            onClick={() => handleAcceptAppointment(app.id)}
+                            aria-label={t('dentistDashboard.accept')}
+                            className="transition-colors p-1 rounded-md text-green-600 hover:bg-green-100 hover:text-green-800 focus:outline-none"
+                            style={{ fontSize: 28, lineHeight: 1 }}
+                          >
+                            <Check className="w-7 h-7" />
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>{t('dentistDashboard.accept')}</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <RejectAppointmentDialog appointmentId={app.id} onReject={handleRejectAppointment} loading={loadingId === app.id} iconOnly />
+                        </TooltipTrigger>
+                        <TooltipContent>{t('dentistDashboard.reject')}</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="pt-6 text-center text-muted-foreground">{t('dentistDashboard.noPendingAppointments')}</div>
+          )}
+        </CardContent>
       </Card>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <DashboardCard
@@ -197,57 +395,6 @@ export default function DentistDashboardClient({ profile, appointments, initialE
           linkText={t('appointments.manageTitle')}
         />
       </div>
-      {todayAppointments.length > 0 && (
-        <Card className="shadow-md">
-          <CardHeader>
-            <CardTitle className="flex items-center"><Clock className="w-6 h-6 mr-2 text-accent"/>{t('dentistDashboard.todaysAppointments')}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-3">
-              {todayAppointments.map((app: any) => (
-                <li key={app.id} className="p-3 border rounded-md bg-background hover:bg-muted/50 transition-colors">
-                  <p className="font-semibold">{app.time} - {app.serviceName}</p>
-                  <p className="text-sm text-muted-foreground">{t('dentistDashboard.patient')}: {app.patient?.user?.name || t('dentistDashboard.patient')}</p>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      )}
-      {todayAppointments.length === 0 && (
-         <Card className="shadow-md">
-            <CardContent className="pt-6 text-center text-muted-foreground">
-                {t('dentistDashboard.noAppointmentsToday')}
-            </CardContent>
-         </Card>
-       )}
-      {/* Próximas citas */}
-      <Card className="shadow-md">
-        <CardHeader>
-          <CardTitle className="flex items-center"><CalendarDays className="w-6 h-6 mr-2 text-accent"/>{t('dentistDashboard.upcomingAppointments')}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {appointmentsState.filter((app: any) => getDateObj(app.date) > new Date() && app.status === 'SCHEDULED')
-            .sort((a: any, b: any) => getDateObj(a.date).getTime() - getDateObj(b.date).getTime())
-            .length > 0 ? (
-            <ul className="space-y-3">
-              {appointmentsState.filter((app: any) => getDateObj(app.date) > new Date() && app.status === 'SCHEDULED')
-                .sort((a: any, b: any) => getDateObj(a.date).getTime() - getDateObj(b.date).getTime())
-                .map((app: any) => (
-                  <li key={app.id} className="p-3 border rounded-md bg-background hover:bg-muted/50 transition-colors">
-                    <p className="font-semibold">{format(getDateObj(app.date), 'MMMM d, yyyy')} {t('dentistDashboard.at')} {app.time} - {app.serviceName}</p>
-                    <p className="text-sm text-muted-foreground">{t('dentistDashboard.patient')}: {app.patient?.user?.name || t('dentistDashboard.patient')}</p>
-                    <p className="text-xs text-muted-foreground">{t('dentistDashboard.status')}: {app.status}</p>
-                  </li>
-                ))}
-            </ul>
-          ) : (
-            <div className="pt-6 text-center text-muted-foreground">
-              {t('dentistDashboard.noUpcomingAppointments')}
-            </div>
-          )}
-        </CardContent>
-      </Card>
       {/* Emergencias */}
       <Card className="shadow-md border-4 border-red-600">
         <CardHeader className="bg-gradient-to-r from-red-600 via-red-400 to-yellow-200 flex flex-row items-center gap-2 rounded-t-lg py-6">
@@ -273,7 +420,7 @@ export default function DentistDashboardClient({ profile, appointments, initialE
                   {em.status === 'PENDING' && (
                     <div className="flex gap-2 mt-2">
                       <Button size="sm" variant="default" className="bg-green-600 hover:bg-green-700 text-white" disabled={loadingId === em.id} onClick={() => handleUpdateStatus(em.id, 'APPROVED')}>
-                        <CheckCircle className="w-4 h-4 mr-1" /> {t('dentistDashboard.approve')}
+                        <Check className="w-4 h-4 mr-1" /> {t('dentistDashboard.approve')}
                       </Button>
                       <Button size="sm" variant="destructive" className="bg-red-600 hover:bg-red-700 text-white" disabled={loadingId === em.id} onClick={() => handleUpdateStatus(em.id, 'CANCELLED')}>
                         <XCircle className="w-4 h-4 mr-1" /> {t('dentistDashboard.cancel')}
@@ -283,7 +430,7 @@ export default function DentistDashboardClient({ profile, appointments, initialE
                   {em.status === 'APPROVED' && em.dentistId === currentDentist.id && (
                     <div className="flex gap-2 mt-2">
                       <Button size="sm" variant="default" className="bg-blue-600 hover:bg-blue-700 text-white" disabled={loadingId === em.id} onClick={() => handleUpdateStatus(em.id, 'FINISHED')}>
-                        <CheckCircle className="w-4 h-4 mr-1" /> {t('dentistDashboard.finish')}
+                        <Check className="w-4 h-4 mr-1" /> {t('dentistDashboard.finish')}
                       </Button>
                     </div>
                   )}

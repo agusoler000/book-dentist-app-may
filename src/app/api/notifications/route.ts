@@ -10,10 +10,14 @@ export async function GET(req: Request) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
   }
   const userId = (session.user as any).id;
+  const { searchParams } = new URL(req.url);
+  const limit = parseInt(searchParams.get('limit') || '10', 10);
+  const skip = parseInt(searchParams.get('skip') || '0', 10);
   const notifications = await prisma.notification.findMany({
     where: { userId },
     orderBy: { createdAt: "desc" },
-    take: 50,
+    take: limit,
+    skip,
   });
   return NextResponse.json({ success: true, notifications });
 }

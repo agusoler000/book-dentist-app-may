@@ -42,6 +42,7 @@ export default function PatientDashboardClient({ profile, appointments }: any) {
   const [loadingEmergencies, setLoadingEmergencies] = useState(true);
   const [appointmentsState, setAppointmentsState] = useState<any[]>(appointments);
   const currentPatient = profile.patient;
+  const pendingAppointments = appointmentsState.filter((app: any) => app.status === 'PENDING');
   const upcomingAppointments = appointmentsState
     .filter((app: any) => {
       if (!app.date) return false;
@@ -95,26 +96,26 @@ export default function PatientDashboardClient({ profile, appointments }: any) {
             {t('patientDashboard.description')}
           </CardDescription>
         </CardHeader>
-        {nextAppointment && (
-          <CardContent className="pt-6">
-            <h3 className="text-xl font-semibold mb-2 text-foreground">
-              {t('patientDashboard.nextAppointment')}
-            </h3>
-            <div className="p-4 border rounded-lg bg-secondary/30 space-y-1">
-              <p className="font-medium text-secondary-foreground">
-                <CalendarCheck className="inline w-5 h-5 mr-2 text-accent" />
-                {format(getDateObj(nextAppointment.date), 'EEEE, MMMM d, yyyy')} {t('patientDashboard.at')} {nextAppointment.time}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {t('patientDashboard.withDentist', { name: nextAppointment.dentist?.user?.name || t('patientDashboard.dentist') })}
-              </p>
-              <p className="text-sm text-muted-foreground">
-                {t('patientDashboard.service', { name: nextAppointment.serviceName })}
-              </p>
-            </div>
-          </CardContent>
-        )}
       </Card>
+      {nextAppointment && (
+        <CardContent className="pt-6">
+          <h3 className="text-xl font-semibold mb-2 text-foreground">
+            {t('patientDashboard.nextAppointment')}
+          </h3>
+          <div className="p-4 border rounded-lg bg-secondary/30 space-y-1">
+            <p className="font-medium text-secondary-foreground">
+              <CalendarCheck className="inline w-5 h-5 mr-2 text-accent" />
+              {format(getDateObj(nextAppointment.date), 'EEEE, MMMM d, yyyy')} {t('patientDashboard.at')} {nextAppointment.time}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {t('patientDashboard.withDentist', { name: nextAppointment.dentist?.user?.name || t('patientDashboard.dentist') })}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {t('patientDashboard.service', { name: nextAppointment.serviceName })}
+            </p>
+          </div>
+        </CardContent>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <DashboardCard
           title={t('patientDashboard.bookNewAppointment')}
@@ -178,7 +179,30 @@ export default function PatientDashboardClient({ profile, appointments }: any) {
           </CardContent>
         </Card>
       )}
-
+      <Card className="shadow-md">
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Clock className="w-6 h-6 mr-2 text-accent" />
+            {t('patientDashboard.pendingAppointments')}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {pendingAppointments.length > 0 ? (
+            <ul className="space-y-3">
+              {pendingAppointments.map((app: any) => (
+                <li key={app.id} className="p-3 border rounded-md bg-background flex flex-col gap-2">
+                  <div className="font-semibold">
+                    {format(getDateObj(app.date), 'MMMM d, yyyy')} {t('patientDashboard.at')} {app.time} - {app.serviceName}
+                  </div>
+                  <div className="text-sm text-muted-foreground">{t('patientDashboard.withDentist', { name: app.dentist?.user?.name || t('patientDashboard.dentist') })}</div>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="pt-6 text-center text-muted-foreground">{t('patientDashboard.noPendingAppointments')}</div>
+          )}
+        </CardContent>
+      </Card>
       <Card className="w-full shadow-md">
         <CardHeader>
           <CardTitle className="flex items-center">

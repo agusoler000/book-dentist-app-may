@@ -12,6 +12,8 @@ import { Form, FormItem, FormLabel, FormControl, FormMessage, FormField } from '
 import { useForm } from 'react-hook-form';
 import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import PhoneInput from 'react-phone-input-2';
+import 'react-phone-input-2/lib/style.css';
 
 export default function DentistProfilePageClient({ profile }: any) {
   const { t } = useLanguage();
@@ -148,7 +150,17 @@ export default function DentistProfilePageClient({ profile }: any) {
                               <FormField name="phone" control={form.control} render={({ field }) => (
                                 <FormItem>
                                   <FormLabel>{t('patientProfile.phone')}</FormLabel>
-                                  <FormControl><Input {...field} /></FormControl>
+                                  <FormControl>
+                                    <PhoneInput
+                                      country={'ar'}
+                                      value={field.value}
+                                      onChange={value => field.onChange(value)}
+                                      inputProps={{ name: 'phone', required: false, disabled: loading }}
+                                      inputClass="w-full"
+                                      containerClass="w-full"
+                                      enableSearch
+                                    />
+                                  </FormControl>
                                   <FormMessage />
                                 </FormItem>
                               )} />

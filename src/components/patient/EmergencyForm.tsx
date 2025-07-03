@@ -4,6 +4,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/context/language-context';
+import PhoneInput from 'react-phone-input-2';
+import 'react-phone-input-2/lib/style.css';
 
 interface EmergencyFormProps {
   onSuccess?: () => void;
@@ -62,6 +64,10 @@ export default function EmergencyForm({ onSuccess }: EmergencyFormProps) {
     setForm(f => ({ ...f, [e.target.name]: e.target.value }));
   };
 
+  const handlePhoneChange = (value: string) => {
+    setForm(f => ({ ...f, phone: value }));
+  };
+
   const handleSubmit = async (e: any) => {
     e.preventDefault();
     setLoading(true);
@@ -104,7 +110,15 @@ export default function EmergencyForm({ onSuccess }: EmergencyFormProps) {
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">{t('publicEmergency.phone')}</label>
-            <Input name="phone" value={form.phone} onChange={handleChange} disabled={loading} />
+            <PhoneInput
+              country={'ar'}
+              value={form.phone}
+              onChange={handlePhoneChange}
+              inputProps={{ name: 'phone', required: false, disabled: loading }}
+              inputClass="w-full"
+              containerClass="w-full"
+              enableSearch
+            />
           </div>
           <div>
             <label className="block text-sm font-medium mb-1">{t('publicEmergency.description')}</label>

@@ -287,5 +287,19 @@
   "publicEmergency.status": "Status",
   "patientDashboard.myEmergencies": "My Emergencies",
   "patientDashboard.requestEmergency": "Request Emergency",
-  "patientDashboard.noEmergencies": "You have no emergencies."
+  "patientDashboard.noEmergencies": "You have no emergencies.",
+  "dentistDashboard.pendingAppointments": "Pending Appointments",
+  "dentistDashboard.noPendingAppointments": "No pending appointments.",
+  "dentistDashboard.accept": "Accept",
+  "dentistDashboard.reject": "Reject",
+  "dentistDashboard.rejectTitle": "Reject Appointment",
+  "dentistDashboard.rejectReason": "Rejection Reason",
+  "dentistDashboard.rejectReasonPlaceholder": "Please provide a reason for rejection (min 5 characters)",
+  "dentistDashboard.rejectReasonValidation": "Please provide a valid reason (at least 5 characters).",
+  "dentistDashboard.confirmReject": "Confirm Rejection",
+  "patientDashboard.pendingAppointments": "Pending Appointments",
+  "patientDashboard.noPendingAppointments": "You have no pending appointments.",
+  "notifications.markAllRead": "Mark all as read",
+  "notifications.markRead": "Mark as read",
+  "notifications.loadMore": "Load more"
 }

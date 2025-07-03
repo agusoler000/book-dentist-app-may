@@ -289,5 +289,19 @@
   "emergencyStatus.cancelled": "Cancelada",
   "emergencyStatus.finished": "Finalizada",
   "emergency.alreadyClaimed": "Esta emergencia ya fue tomada por otro dentista.",
-  "publicEmergency.status": "Estado"
+  "publicEmergency.status": "Estado",
+  "dentistDashboard.pendingAppointments": "Citas pendientes",
+  "dentistDashboard.noPendingAppointments": "No hay citas pendientes.",
+  "dentistDashboard.accept": "Aceptar",
+  "dentistDashboard.reject": "Rechazar",
+  "dentistDashboard.rejectTitle": "Rechazar cita",
+  "dentistDashboard.rejectReason": "Motivo de rechazo",
+  "dentistDashboard.rejectReasonPlaceholder": "Por favor, indica el motivo del rechazo (mínimo 5 caracteres)",
+  "dentistDashboard.rejectReasonValidation": "Por favor, indica un motivo válido (al menos 5 caracteres).",
+  "dentistDashboard.confirmReject": "Confirmar rechazo",
+  "patientDashboard.pendingAppointments": "Citas pendientes",
+  "patientDashboard.noPendingAppointments": "No tienes citas pendientes.",
+  "notifications.markAllRead": "Marcar todas como leídas",
+  "notifications.markRead": "Marcar como leída",
+  "notifications.loadMore": "Cargar más"
 }
