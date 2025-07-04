@@ -3,13 +3,7 @@ import withPWA from 'next-pwa';
 
 const isProd = process.env.NODE_ENV === 'production';
 
-const config = withPWA({
-  pwa: {
-    dest: 'public',
-    register: true,
-    skipWaiting: true,
-    disable: !isProd,
-  },
+const nextConfig = {
   images: {
     remotePatterns: [
       {
@@ -27,10 +21,18 @@ const config = withPWA({
     config.resolve.alias['@'] = path.resolve(__dirname, 'src');
     return config;
   },
-});
-
-export default config;
-
-export const eslint = {
-  ignoreDuringBuilds: true,
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  // Otras opciones de Next.js aquí si las tienes
 };
+
+export default withPWA({
+  ...nextConfig,
+  pwa: {
+    dest: 'public',
+    register: true,
+    skipWaiting: true,
+    disable: !isProd,
+  },
+});
