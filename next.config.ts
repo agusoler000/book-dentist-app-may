@@ -1,10 +1,15 @@
-import type {NextConfig} from 'next';
 import path from 'path';
 import withPWA from 'next-pwa';
 
 const isProd = process.env.NODE_ENV === 'production';
 
-const nextConfig: NextConfig = {
+const config = withPWA({
+  pwa: {
+    dest: 'public',
+    register: true,
+    skipWaiting: true,
+    disable: !isProd,
+  },
   images: {
     remotePatterns: [
       {
@@ -21,16 +26,6 @@ const nextConfig: NextConfig = {
     config.resolve.alias = config.resolve.alias || {};
     config.resolve.alias['@'] = path.resolve(__dirname, 'src');
     return config;
-  },
-};
-
-const config = withPWA({
-  ...nextConfig,
-  pwa: {
-    dest: 'public',
-    register: true,
-    skipWaiting: true,
-    disable: !isProd,
   },
 });
 
