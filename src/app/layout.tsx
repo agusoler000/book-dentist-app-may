@@ -11,6 +11,7 @@ import { AuthProvider } from '@/context/auth-context';
 import { SessionProvider } from 'next-auth/react';
 import { useEffect, useState } from 'react';
 import { requestFirebaseNotificationPermission } from '@/lib/firebase';
+import { Bell } from 'lucide-react';
 
 const fontSans = FontSans({
   subsets: ['latin'],
@@ -29,9 +30,18 @@ export default function ClientRootLayout({ children }: { children: React.ReactNo
 
   const handleEnablePush = async () => {
     try {
-      await requestFirebaseNotificationPermission();
-      setPushEnabled(true);
-      alert('¡Notificaciones push activadas!');
+      const token = await requestFirebaseNotificationPermission();
+      if (token) {
+        await fetch('/api/save-fcm-token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token }),
+        });
+        setPushEnabled(true);
+        alert('¡Notificaciones push activadas!');
+      } else {
+        alert('No se pudo obtener el token de notificación.');
+      }
     } catch (err) {
       alert('No se pudo activar notificaciones push.');
     }
@@ -59,20 +69,24 @@ export default function ClientRootLayout({ children }: { children: React.ReactNo
                   onClick={handleEnablePush}
                   style={{
                     position: 'fixed',
-                    bottom: 24,
-                    right: 24,
+                    top: 24,
+                    left: 24,
                     zIndex: 1000,
-                    background: '#0ea5e9',
-                    color: 'white',
+                    background: 'white',
+                    color: '#0ea5e9',
                     border: 'none',
                     borderRadius: 9999,
-                    padding: '1rem 1.5rem',
+                    padding: '0.5rem 0.7rem',
                     fontWeight: 'bold',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
                     cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
                   }}
+                  aria-label="Activar notificaciones push"
                 >
-                  Activar notificaciones push
+                  <Bell size={22} style={{ marginRight: 4 }} />
                 </button>
               )}
               <main className="flex-grow container mx-auto px-4 py-8">{children}</main>
