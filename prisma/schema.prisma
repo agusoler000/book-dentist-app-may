@@ -88,6 +88,8 @@ model User {
 
   // Notifications
   notifications Notification[]
+
+  fcmToken   String?   // Token de notificaciones push
 }
 
 /// Profile data for patients

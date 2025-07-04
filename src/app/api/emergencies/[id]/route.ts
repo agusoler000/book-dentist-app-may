@@ -33,7 +33,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     return NextResponse.json({ success: false, error: "Not allowed" }, { status: 403 });
   }
   // Solo puede aprobar si está pendiente, cancelar si está pendiente o asignada, finalizar si está asignada a él y está APPROVED
-  const io = getIO(res);
+  // const io = getIO(res); // Línea eliminada porque no existe y no se usa
   if (status === 'APPROVED') {
     try {
       const updated = await prisma.emergency.update({

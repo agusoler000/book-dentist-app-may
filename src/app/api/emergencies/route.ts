@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import '@/lib/socket-server';
 import { sendWhatsApp } from '@/lib/send-whatsapp';
+import { sendPushNotification } from '@/lib/send-push';
 
 function emitSocketEvent(event: string) {
   // @ts-ignore
@@ -62,6 +63,15 @@ export async function POST(req: Request, res: any) {
           link: '/dentist/dashboard',
         }
       });
+      // Enviar notificación push si tiene fcmToken
+      const user = await prisma.user.findUnique({ where: { id: dentist.userId } });
+      if (user?.fcmToken) {
+        await sendPushNotification(
+          user.fcmToken,
+          'Nueva emergencia recibida',
+          `¡Nueva urgencia! Paciente: ${name}, DNI: ${dni}, Tel: ${phone}. Descripción: ${description}`
+        );
+      }
       // Enviar WhatsApp si tiene teléfono
       console.log('[Depuración] Teléfono del dentista:', dentist.phone);
       if (dentist.phone) {
@@ -88,6 +98,15 @@ export async function POST(req: Request, res: any) {
           link: '/dentist/dashboard',
         }
       });
+      // Enviar notificación push si tiene fcmToken
+      const user = await prisma.user.findUnique({ where: { id: dentist.userId } });
+      if (user?.fcmToken) {
+        await sendPushNotification(
+          user.fcmToken,
+          'Nueva emergencia recibida',
+          `¡Nueva urgencia! Paciente: ${name}, DNI: ${dni}, Tel: ${phone}. Descripción: ${description}`
+        );
+      }
       // Enviar WhatsApp si tiene teléfono
       console.log('[Depuración] Teléfono del dentista:', dentist.phone);
       if (dentist.phone) {

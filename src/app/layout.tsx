@@ -18,6 +18,11 @@ const fontSans = FontSans({
 export default function ClientRootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="es" suppressHydrationWarning>
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#0ea5e9" />
+        <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+      </head>
       <body
         className={cn(
           'min-h-screen bg-background font-sans antialiased flex flex-col',
