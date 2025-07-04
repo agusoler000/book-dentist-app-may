@@ -4,7 +4,9 @@ import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import '@/lib/socket-server';
 import { sendWhatsApp } from '@/lib/send-whatsapp';
-import { sendPushNotification } from '@/lib/send-push';
+import { sendPushNotificationWithPreferences } from '@/lib/send-push';
+import { getEmergencyNotificationText } from '@/lib/push-notifications';
+import { getUserLocale } from '@/lib/get-user-locale';
 
 function emitSocketEvent(event: string) {
   // @ts-ignore
@@ -66,10 +68,14 @@ export async function POST(req: Request, res: any) {
       // Enviar notificación push si tiene fcmToken
       const user = await prisma.user.findUnique({ where: { id: dentist.userId } });
       if (user?.fcmToken) {
-        await sendPushNotification(
+        const locale = await getUserLocale(user.id);
+        const { title, message } = getEmergencyNotificationText(locale, name, dni, phone, description);
+        await sendPushNotificationWithPreferences(
+          user.id,
           user.fcmToken,
-          'Nueva emergencia recibida',
-          `¡Nueva urgencia! Paciente: ${name}, DNI: ${dni}, Tel: ${phone}. Descripción: ${description}`
+          title,
+          message,
+          'emergency'
         );
       }
       // Enviar WhatsApp si tiene teléfono
@@ -101,10 +107,14 @@ export async function POST(req: Request, res: any) {
       // Enviar notificación push si tiene fcmToken
       const user = await prisma.user.findUnique({ where: { id: dentist.userId } });
       if (user?.fcmToken) {
-        await sendPushNotification(
+        const locale = await getUserLocale(user.id);
+        const { title, message } = getEmergencyNotificationText(locale, name, dni, phone, description);
+        await sendPushNotificationWithPreferences(
+          user.id,
           user.fcmToken,
-          'Nueva emergencia recibida',
-          `¡Nueva urgencia! Paciente: ${name}, DNI: ${dni}, Tel: ${phone}. Descripción: ${description}`
+          title,
+          message,
+          'emergency'
         );
       }
       // Enviar WhatsApp si tiene teléfono

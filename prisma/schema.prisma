@@ -90,6 +90,10 @@ model User {
   notifications Notification[]
 
   fcmToken   String?   // Token de notificaciones push
+  pushEmergencies Boolean @default(true) // Notificaciones push de emergencias
+  pushAppointments Boolean @default(true) // Notificaciones push de citas
+  pushStatusChanges Boolean @default(true) // Notificaciones push de cambios de estado
+  locale     String    @default("es") // Idioma preferido del usuario
 }
 
 /// Profile data for patients

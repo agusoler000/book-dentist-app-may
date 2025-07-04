@@ -249,6 +249,9 @@ function NavbarClientContent() {
           <Briefcase className="mr-1 h-5 w-5" /> {t('navbar.dentistPortal')}
         </Link>
       )}
+      <Link href="/notifications/settings" className={isMobile ? "flex items-center gap-2 text-muted-foreground hover:text-foreground" : "text-sm font-medium text-muted-foreground transition-colors hover:text-foreground flex items-center"} onClick={closeMenu}>
+        <Bell className="mr-1 h-5 w-5" /> {t('notifications.settings')}
+      </Link>
       <Link href={userType === 'patient' ? "/patient/profile" : "/dentist/profile"} className={isMobile ? "flex items-center gap-2 text-muted-foreground hover:text-foreground" : "text-sm font-medium text-muted-foreground transition-colors hover:text-foreground flex items-center"} onClick={closeMenu}>
         <UserCircle className="mr-1 h-5 w-5" /> {t('navbar.myProfile')}
       </Link>

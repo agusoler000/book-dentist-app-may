@@ -3,6 +3,9 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/authOptions";
 import prisma from "@/lib/prisma";
 import { NextResponse, NextRequest } from "next/server";
+import { sendPushNotificationWithPreferences } from '@/lib/send-push';
+import { getAppointmentCancelledNotificationText } from '@/lib/push-notifications';
+import { getUserLocale } from '@/lib/get-user-locale';
 
 export async function PATCH(req: NextRequest, { params }: { params:  any }) {
   const id = params.id;
@@ -38,6 +41,24 @@ export async function PATCH(req: NextRequest, { params }: { params:  any }) {
             link: '/patient/dashboard',
           }
         });
+        
+        // Enviar notificación push al paciente
+        const patientUser = await prisma.user.findUnique({ where: { id: fullAppointment.patient.userId } });
+        if (patientUser?.fcmToken) {
+          const locale = await getUserLocale(patientUser.id);
+          const { title, message } = getAppointmentCancelledNotificationText(
+            locale,
+            fullAppointment.dentist?.user?.name || 'Dentista',
+            data.justification || ''
+          );
+          await sendPushNotificationWithPreferences(
+            patientUser.id,
+            patientUser.fcmToken,
+            title,
+            message,
+            'statusChange'
+          );
+        }
       }
     }
     return NextResponse.json({ success: true, appointment: updated });

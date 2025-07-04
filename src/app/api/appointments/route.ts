@@ -4,6 +4,9 @@ import { AppointmentStatus } from '@prisma/client';
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/authOptions";
 import '@/lib/socket-server';
+import { sendPushNotificationWithPreferences } from '@/lib/send-push';
+import { getAppointmentBookedNotificationText, getNewAppointmentNotificationText } from '@/lib/push-notifications';
+import { getUserLocale } from '@/lib/get-user-locale';
 
 export async function POST(req: Request, res: any) {
   const session = await getServerSession(authOptions);
@@ -68,6 +71,25 @@ export async function POST(req: Request, res: any) {
             link: '/patient/dashboard',
           },
         });
+        
+        // Enviar notificación push al paciente
+        const patientUser = await prisma.user.findUnique({ where: { id: patientWithUser.userId } });
+        if (patientUser?.fcmToken) {
+          const locale = await getUserLocale(patientUser.id);
+          const { title, message } = getAppointmentBookedNotificationText(
+            locale,
+            dentistWithUser.user?.name || 'Dentista',
+            fecha,
+            hora
+          );
+          await sendPushNotificationWithPreferences(
+            patientUser.id,
+            patientUser.fcmToken,
+            title,
+            message,
+            'appointment'
+          );
+        }
       } catch (notifError) {
         console.error("❌ Error creando notificación para paciente:", notifError);
       }
@@ -84,6 +106,25 @@ export async function POST(req: Request, res: any) {
             link: '/dentist/dashboard',
           },
         });
+        
+        // Enviar notificación push al dentista
+        const dentistUser = await prisma.user.findUnique({ where: { id: dentistWithUser.userId } });
+        if (dentistUser?.fcmToken) {
+          const locale = await getUserLocale(dentistUser.id);
+          const { title, message } = getNewAppointmentNotificationText(
+            locale,
+            patientWithUser.user?.name || 'Paciente',
+            fecha,
+            hora
+          );
+          await sendPushNotificationWithPreferences(
+            dentistUser.id,
+            dentistUser.fcmToken,
+            title,
+            message,
+            'appointment'
+          );
+        }
       } catch (notifError) {
         console.error("❌ Error creando notificación para dentista:", notifError);
       }

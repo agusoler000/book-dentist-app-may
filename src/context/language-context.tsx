@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import enTranslations from '@/translations/en.json';
 import esTranslations from '@/translations/es.json';
+import { useAuth } from './auth-context';
 
 type Locale = 'en' | 'es';
 
@@ -23,6 +24,7 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [locale, setLocaleState] = useState<Locale>('es'); // Default to Spanish
+  const { currentUser } = useAuth();
 
   useEffect(() => {
     // You could also try to get locale from localStorage or browser settings here
@@ -32,10 +34,23 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const setLocale = useCallback((newLocale: Locale) => {
+  const setLocale = useCallback(async (newLocale: Locale) => {
     setLocaleState(newLocale);
     localStorage.setItem('locale', newLocale);
-  }, []);
+    
+    // Guardar el idioma en la base de datos si el usuario está logueado
+    if (currentUser) {
+      try {
+        await fetch('/api/user/locale', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ locale: newLocale }),
+        });
+      } catch (error) {
+        console.error('Error saving locale to database:', error);
+      }
+    }
+  }, [currentUser]);
 
   const t = useCallback(
     (key: string, params?: Record<string, string | number>): string => {
