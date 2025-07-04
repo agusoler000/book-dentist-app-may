@@ -20,6 +20,7 @@ export async function sendPushNotification(token: string, title: string, body: s
     webpush: {
       notification: {
         icon: '/icons/icon-192x192.png',
+        sound: '/notification.mp3', // <-- Añadido para sonido web
       },
     },
   });

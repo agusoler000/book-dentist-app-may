@@ -16,7 +16,8 @@ messaging.onBackgroundMessage(function(payload) {
     payload.notification.title,
     {
       body: payload.notification.body,
-      icon: '/icons/icon-192x192.png'
+      icon: '/icons/icon-192x192.png',
+      sound: '/notification.mp3'
     }
   );
 }); 
