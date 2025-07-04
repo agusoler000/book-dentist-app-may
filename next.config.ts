@@ -5,10 +5,6 @@ import withPWA from 'next-pwa';
 const isProd = process.env.NODE_ENV === 'production';
 
 const nextConfig: NextConfig = {
-  /* config options here */
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   images: {
     remotePatterns: [
       {
@@ -28,7 +24,7 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withPWA({
+const config = withPWA({
   ...nextConfig,
   pwa: {
     dest: 'public',
@@ -38,9 +34,8 @@ export default withPWA({
   },
 });
 
-// Opcional: si quieres ignorar errores de TypeScript en build, usa esto en tu package.json o en un archivo separado
-// export const config = {
-//   typescript: {
-//     ignoreBuildErrors: true,
-//   },
-// };
+export default config;
+
+export const eslint = {
+  ignoreDuringBuilds: true,
+};
