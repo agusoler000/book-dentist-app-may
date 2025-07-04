@@ -69,7 +69,7 @@ export default function ClientRootLayout({ children }: { children: React.ReactNo
                   onClick={handleEnablePush}
                   style={{
                     position: 'fixed',
-                    top: 24,
+                    bottom: 24,
                     left: 24,
                     zIndex: 1000,
                     background: 'white',
