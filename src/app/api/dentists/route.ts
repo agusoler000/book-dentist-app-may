@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
-import { authOptions } from '../auth/[...nextauth]/route';
+import { authOptions } from '@/lib/authOptions';
 import '@/lib/socket-server';
 
 export async function GET(req: Request) {
@@ -16,9 +16,10 @@ export async function GET(req: Request) {
   return NextResponse.json(dentists);
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, context: any) {
+  const { params } = context;
   const session = await getServerSession(authOptions);
-  if (!session || session.user?.role !== 'DENTIST' || session.user?.id !== params.id) {
+  if (!session || (session.user as any)?.role !== 'DENTIST' || (session.user as any)?.id !== params.id) {
     return NextResponse.json({ success: false, message: 'Unauthorized' }, { status: 401 });
   }
   const { isAvailableForEmergency } = await req.json();

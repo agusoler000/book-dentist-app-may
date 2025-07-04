@@ -1,5 +1,5 @@
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/authOptions";
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import '@/lib/socket-server';
@@ -14,7 +14,8 @@ function emitSocketEvent(event: string) {
   }
 }
 
-export async function PATCH(req: Request, { params }: { params: { id: string } }, res: any) {
+export async function PATCH(req: Request, context: any, res: any) {
+  const { params } = context;
   const session = await getServerSession(authOptions);
   if (!session || (session.user as any).role !== "DENTIST") {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });

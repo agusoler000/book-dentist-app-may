@@ -382,7 +382,7 @@ export default function DentistDashboardClient({ profile, appointments, initialE
         />
         <DashboardCard
           title={t('notifications.title')}
-          description={t('dentistDashboard.notificationsDesc', 'View and manage your notifications and appointment requests.')}
+          description={t('dentistDashboard.notificationsDesc', { defaultValue: 'View and manage your notifications and appointment requests.' })}
           icon={<Bell className="w-8 h-8 text-accent" />}
           link="/dentist/notifications"
           linkText={t('notifications.seeAll')}

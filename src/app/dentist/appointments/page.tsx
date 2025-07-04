@@ -46,28 +46,18 @@ export default function DentistAppointmentsPage() {
   const [cancelError, setCancelError] = useState("");
   const [cancelingId, setCancelingId] = useState<string|null>(null);
   const [loadingAppointments, setLoadingAppointments] = useState(true);
+  // Obtener usuario actual y tipo
+  const [currentUser, setCurrentUser] = useState<any | null>(null);
+  const [userType, setUserType] = useState<string>('');
 
   useEffect(() => {
-    // Verificar sesión y rol
     fetch('/api/auth/session').then(res => res.json()).then(session => {
-      if (!session?.user || session.user.role !== 'DENTIST') {
-        router.replace('/login');
-        return;
-      }
-      if (session.user.dentistId) {
-        fetch(`/api/appointments?dentistId=${session.user.dentistId}`, { cache: 'no-store' })
-          .then(res => res.json())
-          .then(data => {
-            if (data.success) {
-              setAppointments(data.appointments);
-            }
-            setLoading(false);
-          });
-      } else {
-        setLoading(false);
+      if (session?.user) {
+        setCurrentUser(session.user);
+        setUserType(session.user.role?.toLowerCase() || '');
       }
     });
-  }, [router]);
+  }, []);
 
   useDentistNotifications({ reloadEmergencies: () => {}, reloadAppointments: () => {
     if (currentUser && userType === 'dentist') {

@@ -1,15 +1,15 @@
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/authOptions";
 import prisma from "@/lib/prisma";
 import { NextResponse, NextRequest } from "next/server";
 
 export async function PATCH(req: NextRequest, context: any) {
   const { params } = context;
   const session = await getServerSession(authOptions);
-  if (!session || (session.user as any).role !== "DENTIST") {
+  if (!session || (session.user as any)?.role !== "DENTIST") {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
   }
-  const userId = (session.user as any).id;
+  const userId = (session.user as any)?.id;
   const dentist = await prisma.dentist.findUnique({ where: { userId } });
   if (!dentist) {
     return NextResponse.json({ success: false, error: "Dentist profile not found" }, { status: 404 });

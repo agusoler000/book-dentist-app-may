@@ -61,7 +61,7 @@ export default function DentistProfilePageClient({ profile }: any) {
       });
       const result = await res.json();
       if (result.success) {
-        toast({ title: t('profile.updated'), description: t('profile.updatedDesc'), variant: 'success' });
+        toast({ title: t('profile.updated'), description: t('profile.updatedDesc'), variant: 'default' });
         setOpen(false);
         window.location.reload();
       } else {

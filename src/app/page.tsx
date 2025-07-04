@@ -11,7 +11,7 @@ import { useLanguage } from '@/context/language-context';
 import Image from 'next/image';
 import { Skeleton } from '@/components/ui/skeleton';
 
-export function HomePage() {
+export default function HomePage() {
   const { t } = useLanguage();
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -109,8 +109,6 @@ export function HomePage() {
     </div>
   );
 }
-
-export default HomePage;
 
 // Componente para el botón colapsable de emergencia en mobile
 function MobileEmergencyButton({ t }: { t: any }) {

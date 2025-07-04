@@ -7,7 +7,7 @@ import { getCurrentUserProfile } from '@/app/actions/auth/get-current-user-profi
 import { getUserAppointments } from '@/app/actions/auth/get-user-appointments';
 import { redirect } from 'next/navigation';
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/authOptions";
 import DentistDashboardClient from './DentistDashboardClient';
 
 // Utilidad para robustez de fechas

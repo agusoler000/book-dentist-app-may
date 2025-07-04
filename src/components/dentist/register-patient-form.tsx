@@ -62,7 +62,7 @@ export default function RegisterPatientForm() {
     setIsLoading(true);
     const patientData: PatientRegistrationInput = {
       ...data,
-      dateOfBirth: data.dateOfBirth ? format(data.dateOfBirth, 'yyyy-MM-dd') : undefined,
+      dateOfBirth: data.dateOfBirth ? format(data.dateOfBirth, 'yyyy-MM-dd') : '',
       password: data.password,
     };
     
@@ -72,7 +72,7 @@ export default function RegisterPatientForm() {
     if (result.success) {
       toast({
         title: t('patientRegistration.success'),
-        description: `${'name' in (result.patient ?? {}) && result.patient?.name ? result.patient.name : ''}${'email' in (result.patient ?? {}) && result.patient?.email ? ' (' + result.patient.email + ')' : ''} has been registered.`,
+        description: `${result.name ?? ''}${result.email ? ' (' + result.email + ')' : ''} has been registered.`,
       });
       form.reset();
     } else {

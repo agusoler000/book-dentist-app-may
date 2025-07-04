@@ -2,8 +2,7 @@
 
 import { redirect } from 'next/navigation';
 import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { mockAppointments, mockPatients } from '@/lib/mock-data';
+import { authOptions } from '@/lib/authOptions';
 import type { Appointment, Patient } from '@/lib/types';
 import { format, parseISO, isFuture } from 'date-fns';
 import Link from 'next/link';

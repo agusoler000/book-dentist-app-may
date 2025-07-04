@@ -13,16 +13,16 @@ const app = initializeApp(firebaseConfig);
 
 export const messaging = getMessaging(app);
 
-export function requestFirebaseNotificationPermission() {
-  return Notification.requestPermission().then((permission) => {
-    if (permission === 'granted') {
-      return getToken(messaging, {
-        vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY!,
-        serviceWorkerRegistration: window.navigator.serviceWorker.getRegistration('/firebase-messaging-sw.js')
-      });
-    }
-    throw new Error('Notification permission not granted');
-  });
+export async function requestFirebaseNotificationPermission() {
+  const permission = await Notification.requestPermission();
+  if (permission === 'granted') {
+    const registration = await window.navigator.serviceWorker.getRegistration('/firebase-messaging-sw.js');
+    return getToken(messaging, {
+      vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY!,
+      serviceWorkerRegistration: registration
+    });
+  }
+  throw new Error('Notification permission not granted');
 }
 
 export function onMessageListener() {

@@ -44,11 +44,12 @@ export default function PatientProfileView({ patient, appointments }: PatientPro
       profileImage: null as File | null,
     }
   });
+  const [currentPassword, setCurrentPassword] = useState('');
 
   const onSubmit = async (data: any) => {
     setLoading(true);
     const needsCurrentPassword = (data.email !== patient.email) || (data.password && data.password.length >= 6);
-    if (needsCurrentPassword && !data.currentPassword) {
+    if (needsCurrentPassword && !currentPassword) {
       toast({ title: t('profile.error'), description: t('profile.currentPasswordRequired'), variant: 'destructive' });
       setLoading(false);
       return;
@@ -64,12 +65,12 @@ export default function PatientProfileView({ patient, appointments }: PatientPro
           dni: data.dni,
           dateOfBirth: data.dateOfBirth,
           password: data.password || undefined,
-          currentPassword: data.currentPassword || undefined,
+          currentPassword: currentPassword || undefined,
         })
       });
       const result = await res.json();
       if (result.success) {
-        toast({ title: t('profile.updated'), description: t('profile.updatedDesc'), variant: 'success' });
+        toast({ title: t('profile.updated'), description: t('profile.updatedDesc'), variant: 'default' });
         setOpen(false);
         // Opcional: refrescar la página o los datos
         window.location.reload();
@@ -211,13 +212,20 @@ export default function PatientProfileView({ patient, appointments }: PatientPro
                               </FormItem>
                             )} />
                             {showCurrentPassword && (
-                              <FormField name="currentPassword" control={form.control} render={({ field }) => (
-                                <FormItem className="md:col-span-2">
-                                  <FormLabel>{t('profile.currentPassword')}</FormLabel>
-                                  <FormControl><Input {...field} type="password" autoComplete="current-password" /></FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )} />
+                              <FormItem className="md:col-span-2">
+                                <FormLabel>{t('profile.currentPassword')}</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    name="currentPassword"
+                                    type="password"
+                                    autoComplete="current-password"
+                                    value={currentPassword}
+                                    onChange={e => setCurrentPassword(e.target.value)}
+                                    disabled={loading}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
                             )}
                           </div>
                         </div>

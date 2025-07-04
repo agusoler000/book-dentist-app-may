@@ -1,5 +1,4 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { mockDentists } from '@/lib/mock-data'; // Used for mock emergency status if not on currentUser
 import EmergencyStatusToggleWithAuth from '@/components/dentist/EmergencyStatusToggleWithAuth';
 import Image from 'next/image';
 import { Mail, Phone, Loader2 } from 'lucide-react';

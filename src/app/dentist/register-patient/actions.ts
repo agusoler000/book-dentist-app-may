@@ -20,7 +20,7 @@ export type PatientRegistrationInput = z.infer<typeof PatientRegistrationSchema>
 
 export async function registerPatient(
   data: PatientRegistrationInput
-): Promise<{ success: boolean; message: string; patient?: Patient; errors?: z.ZodIssue[] }> {
+): Promise<{ success: boolean; message: string; patient?: Patient; name?: string; email?: string; errors?: z.ZodIssue[] }> {
   const validationResult = PatientRegistrationSchema.safeParse(data);
 
   if (!validationResult.success) {
@@ -67,7 +67,7 @@ export async function registerPatient(
         user: { connect: { id: user.id } },
       },
     });
-    return { success: true, message: 'Patient registered successfully!', patient: { ...patient, name: user.name, email: user.email } };
+    return { success: true, message: 'Patient registered successfully!', patient, name: user.name ?? undefined, email: user.email ?? undefined };
   } catch (error) {
     console.error('Failed to register patient:', error);
     if (error instanceof Error && error.message.includes('Unique constraint failed')) {

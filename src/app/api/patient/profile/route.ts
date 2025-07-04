@@ -1,12 +1,12 @@
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/authOptions";
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { compare, hash } from "bcryptjs";
 
 export async function PATCH(req: Request) {
   const session = await getServerSession(authOptions);
-  if (!session || (session.user as any).role !== "PATIENT") {
+  if (!session || !(session.user as any)?.id) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
   }
   const userId = (session.user as any).id;
@@ -54,7 +54,7 @@ export async function PATCH(req: Request) {
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
-  if (!session || (session.user as any).role !== "PATIENT") {
+  if (!session || !(session.user as any)?.id) {
     return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
   }
   const userId = (session.user as any).id;
