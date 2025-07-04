@@ -9,6 +9,8 @@ import { Toaster } from '@/components/ui/toaster';
 import { LanguageProvider } from '@/context/language-context';
 import { AuthProvider } from '@/context/auth-context';
 import { SessionProvider } from 'next-auth/react';
+import { useEffect, useState } from 'react';
+import { requestFirebaseNotificationPermission } from '@/lib/firebase';
 
 const fontSans = FontSans({
   subsets: ['latin'],
@@ -16,6 +18,25 @@ const fontSans = FontSans({
 });
 
 export default function ClientRootLayout({ children }: { children: React.ReactNode }) {
+  const [showPushButton, setShowPushButton] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window && 'serviceWorker' in navigator) {
+      setShowPushButton(true);
+    }
+  }, []);
+
+  const handleEnablePush = async () => {
+    try {
+      await requestFirebaseNotificationPermission();
+      setPushEnabled(true);
+      alert('¡Notificaciones push activadas!');
+    } catch (err) {
+      alert('No se pudo activar notificaciones push.');
+    }
+  };
+
   return (
     <html lang="es" suppressHydrationWarning>
       <head>
@@ -33,6 +54,27 @@ export default function ClientRootLayout({ children }: { children: React.ReactNo
           <LanguageProvider>
             <AuthProvider>
               <Navbar />
+              {showPushButton && !pushEnabled && (
+                <button
+                  onClick={handleEnablePush}
+                  style={{
+                    position: 'fixed',
+                    bottom: 24,
+                    right: 24,
+                    zIndex: 1000,
+                    background: '#0ea5e9',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 9999,
+                    padding: '1rem 1.5rem',
+                    fontWeight: 'bold',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Activar notificaciones push
+                </button>
+              )}
               <main className="flex-grow container mx-auto px-4 py-8">{children}</main>
               <Footer />
               <Toaster />
