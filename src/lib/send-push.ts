@@ -5,23 +5,31 @@ if (!admin.apps.length) {
     credential: admin.credential.cert({
       projectId: process.env.FIREBASE_PROJECT_ID,
       clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
+      privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\n/g, '\n'),
     }),
   });
 }
 
 export async function sendPushNotification(token: string, title: string, body: string) {
-  return admin.messaging().send({
-    token,
-    notification: {
-      title,
-      body,
-    },
-    webpush: {
+  try {
+    console.log('Enviando push a token:', token);
+    const res = await admin.messaging().send({
+      token,
       notification: {
-        icon: '/icons/icon-192x192.png',
-        sound: '/notification.mp3', // <-- Añadido para sonido web
+        title,
+        body,
       },
-    },
-  });
+      webpush: {
+        notification: {
+          icon: '/icons/icon-192x192.png',
+          sound: '/notification.mp3',
+        },
+      },
+    });
+    console.log('Push enviado correctamente:', res);
+    return res;
+  } catch (err) {
+    console.error('Error enviando push:', err);
+    throw err;
+  }
 } 
