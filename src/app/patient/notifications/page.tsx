@@ -1,4 +1,4 @@
-"use client";
+'use client';
 import { useEffect, useState } from "react";
 import { useLanguage } from "@/context/language-context";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
