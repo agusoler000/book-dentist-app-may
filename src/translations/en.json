@@ -11,7 +11,7 @@
   "navbar.patientPortal": "Patient Portal",
   "navbar.dentistPortal": "Dentist Portal",
   "navbar.emergencies": "Emergencies",
-  "navbar.bookNow": "Book Now",
+  "navbar.bookNow": "Request appointment",
   "navbar.registerPatient": "Register Patient",
   "languageSwitcher.es": "ES",
   "languageSwitcher.en": "EN",
@@ -89,8 +89,8 @@
   "appointmentForm.submit": "Book Appointment",
   "appointmentForm.submitting": "Booking...",
   "appointmentForm.success": "Success!",
-  "appointmentForm.failed": "Booking Failed",
-  "appointmentForm.bookingFor": "Booking for: {name} ({email})",
+  "appointmentForm.failed": "Request Failed",
+  "appointmentForm.bookingFor": "Requesting for: {name} ({email})",
   "appointmentForm.selectDentist": "Select a dentist",
   "appointmentForm.selectService": "Select a service",
   "appointmentForm.selectTime": "Select a time slot",
@@ -101,7 +101,7 @@
   "patientDashboard.withDentist": "With: {name}",
   "patientDashboard.dentist": "Dentist",
   "patientDashboard.service": "Service: {name}",
-  "patientDashboard.bookNewAppointment": "Book New Appointment",
+  "patientDashboard.bookNewAppointment": "Request New Appointment",
   "patientDashboard.bookNewAppointmentDesc": "Find a slot that works for you.",
   "patientDashboard.scheduleNow": "Schedule Now",
   "patientDashboard.myProfile": "My Profile",
@@ -301,5 +301,6 @@
   "patientDashboard.noPendingAppointments": "You have no pending appointments.",
   "notifications.markAllRead": "Mark all as read",
   "notifications.markRead": "Mark as read",
-  "notifications.loadMore": "Load more"
+  "notifications.loadMore": "Load more",
+  "appointments.selectDuration": "Select duration"
 }

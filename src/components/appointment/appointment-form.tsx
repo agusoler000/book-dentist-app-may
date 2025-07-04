@@ -11,29 +11,50 @@ import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import { useLanguage } from '@/context/language-context';
+import { generateHalfHourSlots } from '@/lib/utils';
 
 export default function AppointmentForm() {
   const { toast } = useToast();
   const router = useRouter();
   const { currentUser, userType, isLoadingAuth } = useAuth();
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const [dentists, setDentists] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedDentist, setSelectedDentist] = useState('');
+  const [selectedDate, setSelectedDate] = useState('');
+  const [occupiedTimes, setOccupiedTimes] = useState<string[]>([]);
 
   useEffect(() => {
     fetch("/api/dentists").then(res => res.json()).then(setDentists);
   }, []);
 
-  // Horarios fijos por ahora
-  const availableTimeSlots = [
-    '09:00 AM', '10:00 AM', '11:00 AM', '12:00 PM',
-    '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM', '05:00 PM'
-  ];
+  // Horarios cada media hora de 07:00 a 22:00
+  const availableTimeSlots = generateHalfHourSlots();
+
+  // Cuando cambian dentista o fecha, consultar horarios ocupados
+  useEffect(() => {
+    if (selectedDentist && selectedDate) {
+      fetch(`/api/appointments/occupied?dentistId=${selectedDentist}&date=${selectedDate}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) setOccupiedTimes(data.occupiedTimes);
+          else setOccupiedTimes([]);
+        });
+    } else {
+      setOccupiedTimes([]);
+    }
+  }, [selectedDentist, selectedDate]);
+
+  // Resetear fecha/hora si cambia dentista
+  useEffect(() => {
+    setSelectedDate('');
+  }, [selectedDentist]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setIsLoading(true);
     const formData = new FormData(e.target as HTMLFormElement);
+    formData.append('durationMinutes', '30');
     const res = await fetch("/api/appointments", {
       method: "POST",
       body: formData,
@@ -44,7 +65,7 @@ export default function AppointmentForm() {
       toast({ title: "Success!", description: result.message });
       router.push("/patient/dashboard?booked=1");
     } else {
-      toast({ title: "Booking Failed", description: result.message, variant: "destructive" });
+      toast({ title: locale === 'en' ? 'Request Failed' : 'Error al solicitar', description: result.message, variant: "destructive" });
     }
   }
 
@@ -65,39 +86,45 @@ export default function AppointmentForm() {
           </div>
           <div>
             <label className="block font-medium mb-1">{t('appointmentForm.dentist')}</label>
-            <Select name="dentistId" required defaultValue="">
+            <Select name="dentistId" required defaultValue="" onValueChange={v => setSelectedDentist(v)}>
               <SelectTrigger>
                 <SelectValue placeholder={t('appointmentForm.selectDentist')} />
               </SelectTrigger>
               <SelectContent>
                 {dentists.map((dentist) => (
-                  <SelectItem key={dentist.id} value={dentist.userId}>
+                  <SelectItem key={dentist.id} value={dentist.id}>
                     {dentist.user?.name || 'No Name'} - {dentist.specialty}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
+          {selectedDentist && (
+            <>
+              <div>
+                <label className="block font-medium mb-1">{t('appointmentForm.date')}</label>
+                <Input name="date" type="date" required min={format(new Date(), 'yyyy-MM-dd')} onChange={e => setSelectedDate(e.target.value)} value={selectedDate} />
+              </div>
+              {selectedDate && (
+                <div>
+                  <label className="block font-medium mb-1">{t('appointmentForm.time')}</label>
+                  <Select name="time" required defaultValue="">
+                    <SelectTrigger>
+                      <SelectValue placeholder={t('appointmentForm.selectTime')} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableTimeSlots.map((slot) => (
+                        <SelectItem key={slot} value={slot} disabled={occupiedTimes.includes(slot)}>{slot} {occupiedTimes.includes(slot) ? '\u26d4' : ''}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </>
+          )}
           <div>
             <label className="block font-medium mb-1">{t('appointmentForm.service')}</label>
             <Input name="serviceName" type="text" required placeholder={t('appointmentForm.servicePlaceholder') || 'Ej: Limpieza, Consulta, Ortodoncia...'} />
-          </div>
-          <div>
-            <label className="block font-medium mb-1">{t('appointmentForm.date')}</label>
-            <Input name="date" type="date" required min={format(new Date(), 'yyyy-MM-dd')} />
-          </div>
-          <div>
-            <label className="block font-medium mb-1">{t('appointmentForm.time')}</label>
-            <Select name="time" required defaultValue="">
-              <SelectTrigger>
-                <SelectValue placeholder={t('appointmentForm.selectTime')} />
-              </SelectTrigger>
-              <SelectContent>
-                {availableTimeSlots.map((slot) => (
-                  <SelectItem key={slot} value={slot}>{slot}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
           <div>
             <label className="block font-medium mb-1">{t('appointmentForm.notes')}</label>

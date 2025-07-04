@@ -9,6 +9,7 @@ export type BookAppointmentInput = {
   time: string;
   notes?: string;
   serviceName: string;
+  durationMinutes: any;
 };
 
 export async function bookAppointmentAction(data: BookAppointmentInput) {
@@ -23,7 +24,8 @@ export async function bookAppointmentAction(data: BookAppointmentInput) {
         time: data.time,
         notes: data.notes,
         serviceName: data.serviceName,
-        status: AppointmentStatus.PENDING,
+        status: 'PENDING',
+        durationMinutes: data.durationMinutes ? Number(data.durationMinutes) : 30,
       },
     });
     console.log("✅ Cita creada:", appointment.id);

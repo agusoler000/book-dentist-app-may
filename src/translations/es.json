@@ -11,7 +11,7 @@
   "navbar.patientPortal": "Portal Paciente",
   "navbar.dentistPortal": "Portal Dentista",
   "navbar.emergencies": "Emergencias",
-  "navbar.bookNow": "Reservar Ahora",
+  "navbar.bookNow": "Solicitar cita",
   "navbar.registerPatient": "Registrar Paciente",
   "languageSwitcher.es": "ES",
   "languageSwitcher.en": "EN",
@@ -90,7 +90,7 @@
   "appointmentForm.submitting": "Reservando...",
   "appointmentForm.success": "¡Éxito!",
   "appointmentForm.failed": "Error al reservar",
-  "appointmentForm.bookingFor": "Reservando para: {name} ({email})",
+  "appointmentForm.bookingFor": "Solicitando para: {name} ({email})",
   "appointmentForm.selectDentist": "Selecciona un dentista",
   "appointmentForm.selectService": "Selecciona un servicio",
   "appointmentForm.selectTime": "Selecciona un horario",
@@ -101,7 +101,7 @@
   "patientDashboard.withDentist": "Con: {name}",
   "patientDashboard.dentist": "Dentista",
   "patientDashboard.service": "Servicio: {name}",
-  "patientDashboard.bookNewAppointment": "Reservar nueva cita",
+  "patientDashboard.bookNewAppointment": "Solicitar nueva cita",
   "patientDashboard.bookNewAppointmentDesc": "Encuentra un horario que se adapte a ti.",
   "patientDashboard.scheduleNow": "Agendar ahora",
   "patientDashboard.myProfile": "Mi perfil",
@@ -303,5 +303,6 @@
   "patientDashboard.noPendingAppointments": "No tienes citas pendientes.",
   "notifications.markAllRead": "Marcar todas como leídas",
   "notifications.markRead": "Marcar como leída",
-  "notifications.loadMore": "Cargar más"
+  "notifications.loadMore": "Cargar más",
+  "appointments.selectDuration": "Seleccionar duración"
 }

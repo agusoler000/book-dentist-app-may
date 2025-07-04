@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Menu, Briefcase, LogOut, UserCircle, LogIn, UserPlus, Bell, Loader2, Circle, CircleDot } from 'lucide-react';
+import { Menu, Briefcase, LogOut, UserCircle, LogIn, UserPlus, Bell, Loader2, Circle, CircleDot, AlertTriangle, IdCard, LayoutDashboard } from 'lucide-react';
 import LanguageSwitcher from './language-switcher';
 import { useLanguage } from '@/context/language-context';
 import { useAuth } from '@/context/auth-context'; // Import useAuth
@@ -203,6 +203,7 @@ function NotificationsBell() {
 function NavbarClientContent() {
   const { t } = useLanguage();
   const { currentUser, userType, logout, isLoadingAuth } = useAuth();
+  const [open, setOpen] = useState(false); // <-- Mover aquí
 
   if (isLoadingAuth) {
     return (
@@ -213,55 +214,58 @@ function NavbarClientContent() {
     ); // Or some loading indicator
   }
 
-  const commonLinks = (isMobile = false) => (
+  // Cambiar commonLinks para menú móvil: Emergencias con icono rojo, sin 'Reservar ahora' si no logueado
+  const commonLinks = (isMobile = false, closeMenu?: () => void) => (
     <>
       {(!currentUser || userType === 'patient') && (
-        <Link href="/emergencies" className={isMobile ? "text-muted-foreground hover:text-foreground" : "text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"}>
-          {t('navbar.emergencies')}
+        <Link
+          href="/emergencies"
+          className={isMobile ? "flex items-center gap-2 text-muted-foreground hover:text-foreground" : "text-sm font-medium text-muted-foreground transition-colors hover:text-foreground flex items-center"}
+          onClick={closeMenu}
+        >
+          <AlertTriangle className="h-5 w-5 text-red-600" />
+          <span>{t('navbar.emergencies')}</span>
         </Link>
       )}
-      {!currentUser && (
-        <Button asChild variant={isMobile ? "default" : "default"} className={isMobile ? "w-full mt-4 bg-accent text-accent-foreground hover:bg-accent/90" : "bg-accent text-accent-foreground hover:bg-accent/90"}>
-          <Link href="/patient/book-appointment">{t('navbar.bookNow')}</Link>
-        </Button>
-      )}
+      {/* Solo mostrar 'Reservar ahora' si está logueado como paciente */}
       {currentUser && userType === 'patient' && (
-         <Button asChild variant={isMobile ? "default" : "default"} className={isMobile ? "w-full mt-4 bg-accent text-accent-foreground hover:bg-accent/90" : "bg-accent text-accent-foreground hover:bg-accent/90"}>
-            <Link href="/patient/book-appointment">{t('navbar.bookNow')}</Link>
-        </Button>
+        <Link href="/patient/book-appointment" onClick={closeMenu} className={isMobile ? "flex items-center gap-2 text-muted-foreground hover:text-foreground" : "text-sm font-medium text-muted-foreground transition-colors hover:text-foreground flex items-center"}>
+          <UserPlus className="mr-1 h-5 w-5" /> {t('navbar.bookNow')}
+        </Link>
       )}
     </>
   );
-  
-  const authenticatedUserLinks = (isMobile = false) => (
+
+  // Cambiar authenticatedUserLinks y unauthenticatedUserLinks para menú móvil: solo icono + texto, cerrar menú al click
+  const authenticatedUserLinks = (isMobile = false, closeMenu?: () => void) => (
     <>
       {userType === 'patient' && (
-        <Link href="/patient/dashboard" className={isMobile ? "text-muted-foreground hover:text-foreground" : "text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"}>
-          {t('navbar.patientPortal')}
+        <Link href="/patient/dashboard" className={isMobile ? "flex items-center gap-2 text-muted-foreground hover:text-foreground" : "text-sm font-medium text-muted-foreground transition-colors hover:text-foreground flex items-center"} onClick={closeMenu}>
+          <LayoutDashboard className="mr-1 h-5 w-5" /> {t('navbar.patientPortal')}
         </Link>
       )}
       {userType === 'dentist' && (
-        <Link href="/dentist/dashboard" className={isMobile ? "text-muted-foreground hover:text-foreground" : "text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"}>
-          {t('navbar.dentistPortal')}
+        <Link href="/dentist/dashboard" className={isMobile ? "flex items-center gap-2 text-muted-foreground hover:text-foreground" : "text-sm font-medium text-muted-foreground transition-colors hover:text-foreground flex items-center"} onClick={closeMenu}>
+          <Briefcase className="mr-1 h-5 w-5" /> {t('navbar.dentistPortal')}
         </Link>
       )}
-       <Link href={userType === 'patient' ? "/patient/profile" : "/dentist/profile"} className={isMobile ? "text-muted-foreground hover:text-foreground flex items-center" : "text-sm font-medium text-muted-foreground transition-colors hover:text-foreground flex items-center"}>
+      <Link href={userType === 'patient' ? "/patient/profile" : "/dentist/profile"} className={isMobile ? "flex items-center gap-2 text-muted-foreground hover:text-foreground" : "text-sm font-medium text-muted-foreground transition-colors hover:text-foreground flex items-center"} onClick={closeMenu}>
         <UserCircle className="mr-1 h-5 w-5" /> {t('navbar.myProfile')}
       </Link>
-      <Button variant={isMobile ? "outline" : "ghost"} size={isMobile ? "default" : "sm"} onClick={logout} className={isMobile ? "w-full" : ""}>
+      <Button variant={isMobile ? "outline" : "ghost"} size={isMobile ? "default" : "sm"} onClick={() => { logout(); if (closeMenu) closeMenu(); }} className={isMobile ? "w-full flex items-center gap-2 justify-center" : ""}>
         <LogOut className="mr-1 h-5 w-5" /> {t('navbar.logout')}
       </Button>
     </>
   );
 
-  const unauthenticatedUserLinks = (isMobile = false) => (
+  const unauthenticatedUserLinks = (isMobile = false, closeMenu?: () => void) => (
     <>
-       <Link href="/login" className={isMobile ? "text-muted-foreground hover:text-foreground flex items-center" : "text-sm font-medium text-muted-foreground transition-colors hover:text-foreground flex items-center"}>
-         <LogIn className="mr-1 h-5 w-5" /> {t('navbar.login')}
+      <Link href="/login" className={isMobile ? "flex items-center gap-2 text-muted-foreground hover:text-foreground" : "text-sm font-medium text-muted-foreground transition-colors hover:text-foreground flex items-center"} onClick={closeMenu}>
+        <LogIn className="mr-1 h-5 w-5" /> {t('navbar.login')}
       </Link>
-      <Button asChild variant={isMobile ? "default" : "default"} size={isMobile ? "default" : "sm"} className={isMobile ? "w-full bg-primary text-primary-foreground" : "bg-primary text-primary-foreground hover:bg-primary/90"}>
-        <Link href="/signup"><UserPlus className="mr-1 h-5 w-5" />{t('navbar.signup')}</Link>
-      </Button>
+      <Link href="/signup" className={isMobile ? "flex items-center gap-2 text-muted-foreground hover:text-foreground" : "text-sm font-medium text-muted-foreground transition-colors hover:text-foreground flex items-center"} onClick={closeMenu}>
+        <UserPlus className="mr-1 h-5 w-5" /> {t('navbar.signup')}
+      </Link>
     </>
   );
 
@@ -290,7 +294,7 @@ function NavbarClientContent() {
       <div className="md:hidden flex items-center gap-2">
         <LanguageSwitcher />
         <NotificationsBell />
-        <Sheet>
+        <Sheet open={open} onOpenChange={setOpen}>
           <SheetTrigger asChild>
             <Button variant="outline" size="icon">
               <Menu className="h-6 w-6" />
@@ -299,27 +303,28 @@ function NavbarClientContent() {
           </SheetTrigger>
           <SheetContent side="right">
             <nav className="grid gap-6 text-lg font-medium mt-8">
-              <Link href="/" className="flex items-center gap-2 text-lg font-semibold mb-4">
+              <Link href="/" className="flex items-center gap-2 text-lg font-semibold mb-4" onClick={() => setOpen(false)}>
                 <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-accent">
                   <path d="M9.19807 4.45825C8.55418 4.22291 7.94427 4 7 4C5 4 4 6 4 8.5C4 10.0985 4.40885 11.0838 4.83441 12.1093C5.0744 12.6877 5.31971 13.2788 5.5 14C5.649 14.596 5.7092 15.4584 5.77321 16.3755C5.92401 18.536 6.096 21 7.5 21C8.39898 21 8.79286 19.5857 9.22652 18.0286C9.75765 16.1214 10.3485 14 12 14C13.6515 14 14.2423 16.1214 14.7735 18.0286C15.2071 19.5857 15.601 21 16.5 21C17.904 21 18.076 18.536 18.2268 16.3755C18.2908 15.4584 18.351 14.596 18.5 14C18.6803 13.2788 18.9256 12.6877 19.1656 12.1093C19.5912 11.0838 20 10.0985 20 8.5C20 6 19 4 17 4C16.0557 4 15.4458 4.22291 14.8019 4.45825C14.082 4.72136 13.3197 5 12 5C10.6803 5 9.91796 4.72136 9.19807 4.45825Z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"></path>
                 </svg>
                 <span className="text-foreground">COEC</span>
               </Link>
-              {commonLinks(true)}
+              {currentUser && (
+                <span className="text-base font-medium flex items-center gap-2 mb-2 text-muted-foreground hover:text-foreground">
+                  <IdCard className="h-5 w-5" />
+                  {currentUser.name || currentUser.email}
+                </span>
+              )}
+              {commonLinks(true, () => setOpen(false))}
               {currentUser ? (
                 <>
-                  <span className="text-base font-medium text-primary flex items-center gap-2 mb-2">
-                    <UserCircle className="h-5 w-5" />
-                    {currentUser.name || currentUser.email}
-                  </span>
                   {userType === 'dentist' && (
                     <EmergencyStatusToggle dentistId={currentUser.id} />
                   )}
-                  {authenticatedUserLinks(true)}
-                  <NotificationsBell />
+                  {authenticatedUserLinks(true, () => setOpen(false))}
                 </>
               ) : (
-                unauthenticatedUserLinks(true)
+                unauthenticatedUserLinks(true, () => setOpen(false))
               )}
             </nav>
           </SheetContent>

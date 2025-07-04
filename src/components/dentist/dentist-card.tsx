@@ -4,12 +4,14 @@ import { Button } from '@/components/ui/button';
 import type { Dentist } from '@/lib/types';
 import { Phone, Mail, CheckCircle, XCircle } from 'lucide-react';
 import Link from 'next/link';
+import { useLanguage } from '@/context/language-context';
 
 interface DentistCardProps {
   dentist: Dentist;
 }
 
 export default function DentistCard({ dentist }: DentistCardProps) {
+  const { t, locale } = useLanguage ? useLanguage() : { t: (x: string) => x, locale: 'es' };
   return (
     <Card className="w-full max-w-sm shadow-lg hover:shadow-xl transition-shadow duration-300">
       <CardHeader className="items-center">
@@ -47,7 +49,7 @@ export default function DentistCard({ dentist }: DentistCardProps) {
       </CardContent>
       <CardFooter className="flex justify-center">
         <Button asChild className="bg-accent text-accent-foreground hover:bg-accent/90 w-full sm:w-auto">
-          <Link href={`/patient/book-appointment?dentistId=${dentist.id}`}>Book Appointment</Link>
+          <Link href={`/patient/book-appointment?dentistId=${dentist.id}`}>{locale === 'en' ? 'Request appointment' : 'Solicitar cita'}</Link>
         </Button>
       </CardFooter>
     </Card>

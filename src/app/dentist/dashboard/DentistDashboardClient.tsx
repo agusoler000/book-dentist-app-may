@@ -13,6 +13,9 @@ import { useDentistNotifications } from '@/hooks/use-dentist-notifications';
 import { Dialog, DialogTrigger, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { Loader2 } from 'lucide-react';
 
 function getDateObj(date: string | Date) {
   return typeof date === 'string' ? parseISO(date) : date;
@@ -48,6 +51,8 @@ export default function DentistDashboardClient({ profile, appointments, initialE
   const { toast } = useToast();
   const [rejectModal, setRejectModal] = useState<{ open: boolean, appointmentId: string | null }>({ open: false, appointmentId: null });
   const [rejectReason, setRejectReason] = useState('');
+  const [approvePopoverId, setApprovePopoverId] = useState<string | null>(null);
+  const [approveDuration, setApproveDuration] = useState<number>(30);
 
   const reloadEmergencies = () => {
     fetch('/api/emergencies', { credentials: 'include' })
@@ -219,6 +224,19 @@ export default function DentistDashboardClient({ profile, appointments, initialE
       : format(date, 'MMMM d, yyyy');
   }
 
+  const handleApprove = async (id: string, durationMinutes: number) => {
+    setLoadingId(id + 'SCHEDULED');
+    await fetch(`/api/appointments/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'SCHEDULED', durationMinutes }),
+    });
+    reloadAppointments();
+    setLoadingId(null);
+    setApprovePopoverId(null);
+    setApproveDuration(30);
+  };
+
   return (
     <div className="space-y-8">
       <Card className="shadow-lg border-primary/20">
@@ -318,21 +336,34 @@ export default function DentistDashboardClient({ profile, appointments, initialE
                     )}
                   </div>
                   <div className="flex gap-2 ml-auto">
-                    <TooltipProvider>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            onClick={() => handleAcceptAppointment(app.id)}
-                            aria-label={t('dentistDashboard.accept')}
-                            className="transition-colors p-1 rounded-md text-green-600 hover:bg-green-100 hover:text-green-800 focus:outline-none"
-                            style={{ fontSize: 28, lineHeight: 1 }}
-                          >
-                            <Check className="w-7 h-7" />
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent>{t('dentistDashboard.accept')}</TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
+                    <Popover open={approvePopoverId === app.id} onOpenChange={v => { setApprovePopoverId(v ? app.id : null); setApproveDuration(30); }}>
+                      <PopoverTrigger asChild>
+                        <button
+                          aria-label={t('dentistDashboard.accept')}
+                          className="transition-colors p-1 rounded-md text-green-600 hover:bg-green-100 hover:text-green-800 focus:outline-none"
+                          style={{ fontSize: 28, lineHeight: 1 }}
+                        >
+                          <Check className="w-7 h-7" />
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-56">
+                        <div className="mb-2 font-medium text-sm">{t('appointments.selectDuration')}</div>
+                        <Select value={approveDuration.toString()} onValueChange={v => setApproveDuration(Number(v))}>
+                          <SelectTrigger><SelectValue placeholder={t('appointments.selectDuration')} /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="15">15 min</SelectItem>
+                            <SelectItem value="30">30 min</SelectItem>
+                            <SelectItem value="45">45 min</SelectItem>
+                            <SelectItem value="60">1 hora</SelectItem>
+                            <SelectItem value="90">1h 30min</SelectItem>
+                            <SelectItem value="120">2 horas</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Button className="mt-2 w-full" size="sm" onClick={() => handleApprove(app.id, approveDuration)} disabled={loadingId === app.id + 'SCHEDULED'}>
+                          {loadingId === app.id + 'SCHEDULED' ? <Loader2 className="animate-spin w-4 h-4" /> : t('appointments.approve')}
+                        </Button>
+                      </PopoverContent>
+                    </Popover>
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>

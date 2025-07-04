@@ -14,12 +14,14 @@ export async function POST(req: Request, res: any) {
   const date = formData.get('date');
   const time = formData.get('time');
   const notes = formData.get('notes');
+  const durationMinutes = formData.get('durationMinutes');
   if (!userPatientId || !userDentistId || !serviceName || !date || !time) {
     return NextResponse.json({ success: false, message: 'All fields are required.' });
   }
   // Buscar el perfil Patient y Dentist
   const patient = await prisma.patient.findUnique({ where: { userId: String(userPatientId) } });
-  const dentist = await prisma.dentist.findUnique({ where: { userId: String(userDentistId) } });
+  // CAMBIO: buscar por id, no por userId, porque el formulario envía el id de la tabla Dentist
+  const dentist = await prisma.dentist.findUnique({ where: { id: String(userDentistId) } });
   if (!patient) {
     return NextResponse.json({ success: false, message: 'Patient profile not found.' });
   }
@@ -27,7 +29,6 @@ export async function POST(req: Request, res: any) {
     return NextResponse.json({ success: false, message: 'Dentist profile not found.' });
   }
   try {
-    console.log("🔵 Iniciando creación de cita via API:", { patientId: patient.id, dentistId: dentist.id });
     let status: AppointmentStatus = AppointmentStatus.PENDING;
     if (session && session.user && (session.user as any).role === 'DENTIST') {
       status = AppointmentStatus.SCHEDULED;
@@ -41,28 +42,21 @@ export async function POST(req: Request, res: any) {
         time: String(time),
         notes: notes ? String(notes) : undefined,
         status,
+        durationMinutes: durationMinutes ? Number(durationMinutes) : 30,
       },
     });
-    console.log("✅ Cita creada via API:", appointment.id);
 
     // Obtener datos completos de paciente y dentista para personalizar la notificación
-    console.log("🔍 Buscando datos completos para notificaciones...");
     const [patientWithUser, dentistWithUser] = await Promise.all([
       prisma.patient.findUnique({ where: { id: patient.id }, include: { user: true } }),
       prisma.dentist.findUnique({ where: { id: dentist.id }, include: { user: true } }),
     ]);
-    
-    console.log("📋 Datos encontrados:", {
-      patient: patientWithUser ? { id: patientWithUser.id, userId: patientWithUser.userId, userName: patientWithUser.user?.name } : null,
-      dentist: dentistWithUser ? { id: dentistWithUser.id, userId: dentistWithUser.userId, userName: dentistWithUser.user?.name } : null
-    });
     
     const fecha = new Date(String(date)).toLocaleDateString();
     const hora = String(time);
     
     // Notificación para el paciente
     if (patientWithUser && dentistWithUser) {
-      console.log("🔔 Creando notificación para paciente...");
       try {
         await prisma.notification.create({
           data: {
@@ -74,13 +68,11 @@ export async function POST(req: Request, res: any) {
             link: '/patient/dashboard',
           },
         });
-        console.log("✅ Notificación para paciente creada");
       } catch (notifError) {
         console.error("❌ Error creando notificación para paciente:", notifError);
       }
       
       // Notificación para el dentista
-      console.log("🔔 Creando notificación para dentista...");
       try {
         await prisma.notification.create({
           data: {
@@ -92,12 +84,9 @@ export async function POST(req: Request, res: any) {
             link: '/dentist/dashboard',
           },
         });
-        console.log("✅ Notificación para dentista creada");
       } catch (notifError) {
         console.error("❌ Error creando notificación para dentista:", notifError);
       }
-    } else {
-      console.log("⚠️ No se crearon notificaciones porque:", { patient: !!patientWithUser, dentist: !!dentistWithUser });
     }
 
     // Emitir eventos de WebSocket
@@ -157,6 +146,7 @@ export async function GET(req: Request) {
       });
       return NextResponse.json({ success: true, appointments });
     } catch (error) {
+      console.error('API GET /api/appointments error:', error);
       return NextResponse.json({ success: false, message: 'Failed to fetch appointments.' }, { status: 500 });
     }
   }

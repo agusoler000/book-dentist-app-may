@@ -18,6 +18,8 @@ import { Pencil, Check, X } from 'lucide-react';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 import { Calendar } from '@/components/ui/calendar';
 import { useDentistNotifications } from '@/hooks/use-dentist-notifications';
+import { generateHalfHourSlots } from '@/lib/utils';
+import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover';
 
 export default function DentistAppointmentsPage() {
   const { t, locale } = useLanguage();
@@ -28,7 +30,7 @@ export default function DentistAppointmentsPage() {
   const router = useRouter();
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editAppointment, setEditAppointment] = useState<any | null>(null);
-  const [editForm, setEditForm] = useState({ date: '', time: '', serviceName: '', notes: '', patientId: '', dentistId: '', status: '' });
+  const [editForm, setEditForm] = useState({ date: '', time: '', serviceName: '', notes: '', patientId: '', dentistId: '', status: '', duration: 'SHORT' });
   const [editLoading, setEditLoading] = useState(false);
   const [patients, setPatients] = useState<any[]>([]);
   const [dentists, setDentists] = useState<any[]>([]);
@@ -49,28 +51,93 @@ export default function DentistAppointmentsPage() {
   // Obtener usuario actual y tipo
   const [currentUser, setCurrentUser] = useState<any | null>(null);
   const [userType, setUserType] = useState<string>('');
+  const [occupiedTimes, setOccupiedTimes] = useState<string[]>([]);
+  const [showOverrideWarning, setShowOverrideWarning] = useState(false);
+  const [overrideConfirmed, setOverrideConfirmed] = useState(false);
+  const [overrideJustification, setOverrideJustification] = useState('');
+  const [approvePopoverId, setApprovePopoverId] = useState<string | null>(null);
+  const [approveDuration, setApproveDuration] = useState<number>(30);
 
   useEffect(() => {
-    fetch('/api/auth/session').then(res => res.json()).then(session => {
+    fetch('/api/auth/session').then(res => res.json()).then(async session => {
       if (session?.user) {
         setCurrentUser(session.user);
         setUserType(session.user.role?.toLowerCase() || '');
+        let dentistId = session.user.dentistId;
+        if (session.user.role?.toLowerCase() === 'dentist' && !dentistId && session.user.id) {
+          // Buscar el perfil Dentist por userId
+          const res = await fetch(`/api/dentists`);
+          const dentists = await res.json();
+          const myDentist = dentists.find((d:any) => d.userId === session.user.id);
+          if (myDentist) {
+            dentistId = myDentist.id;
+            setCurrentUser((u:any) => ({ ...u, dentistId: myDentist.id }));
+            // Guardar en localStorage para persistencia
+            localStorage.setItem('dentistId', myDentist.id);
+          }
+        } else if (dentistId) {
+          localStorage.setItem('dentistId', dentistId);
+        }
       }
     });
   }, []);
 
   useDentistNotifications({ reloadEmergencies: () => {}, reloadAppointments: () => {
-    if (currentUser && userType === 'dentist') {
+    let dentistId = currentUser?.dentistId || localStorage.getItem('dentistId');
+    if (currentUser && userType === 'dentist' && dentistId) {
       setLoadingAppointments(true);
-      fetch(`/api/appointments?dentistId=${currentUser.dentistId}`)
+      fetch(`/api/appointments?dentistId=${dentistId}`)
         .then(res => res.json())
         .then(data => {
           setAppointments(data.appointments || []);
           setLoadingAppointments(false);
         })
-        .catch(() => setLoadingAppointments(false));
+        .catch(() => { setLoadingAppointments(false); });
     }
   }});
+
+  // Consultar horarios ocupados cuando cambian fecha, hora o dentista en el modal
+  useEffect(() => {
+    if (editModalOpen && editForm.dentistId && editForm.date) {
+      fetch(`/api/appointments/occupied?dentistId=${editForm.dentistId}&date=${editForm.date}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) setOccupiedTimes(data.occupiedTimes);
+          else setOccupiedTimes([]);
+        });
+    } else {
+      setOccupiedTimes([]);
+    }
+    setShowOverrideWarning(false);
+    setOverrideConfirmed(false);
+    setOverrideJustification('');
+  }, [editModalOpen, editForm.dentistId, editForm.date]);
+
+  // Al cambiar la hora, si está ocupada, mostrar advertencia
+  useEffect(() => {
+    if (editForm.time && occupiedTimes.includes(editForm.time)) {
+      setShowOverrideWarning(true);
+    } else {
+      setShowOverrideWarning(false);
+      setOverrideConfirmed(false);
+      setOverrideJustification('');
+    }
+  }, [editForm.time, occupiedTimes]);
+
+  // Nuevo: fetch de citas apenas haya dentistId
+  useEffect(() => {
+    let dentistId = currentUser?.dentistId || localStorage.getItem('dentistId');
+    if (userType === 'dentist' && dentistId) {
+      setLoadingAppointments(true);
+      fetch(`/api/appointments?dentistId=${dentistId}`)
+        .then(res => res.json())
+        .then(data => {
+          setAppointments(data.appointments || []);
+          setLoadingAppointments(false);
+        })
+        .catch(() => { setLoadingAppointments(false); });
+    }
+  }, [currentUser?.dentistId, userType]);
 
   const handleStatus = async (id: string, status: 'SCHEDULED' | 'CANCELLED') => {
     setLoadingId(id + status);
@@ -93,6 +160,29 @@ export default function DentistAppointmentsPage() {
     setLoadingId(null);
   };
 
+  const handleApprove = async (id: string, durationMinutes: number) => {
+    setLoadingId(id + 'SCHEDULED');
+    try {
+      const res = await fetch(`/api/appointments/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'SCHEDULED', durationMinutes })
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast({ title: t('appointments.statusUpdated'), description: t('appointments.statusUpdatedDesc'), variant: undefined });
+        setAppointments(apps => apps.map(a => a.id === id ? { ...a, status: 'SCHEDULED', durationMinutes } : a));
+      } else {
+        toast({ title: t('profile.error'), description: data.error || t('profile.updateFailed'), variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: t('profile.error'), description: t('profile.updateFailed'), variant: 'destructive' });
+    }
+    setLoadingId(null);
+    setApprovePopoverId(null);
+    setApproveDuration(30);
+  };
+
   const openEditModal = async (app: any) => {
     setEditAppointment(app);
     setEditForm({
@@ -103,6 +193,7 @@ export default function DentistAppointmentsPage() {
       patientId: app.patientId,
       dentistId: app.dentistId,
       status: app.status,
+      duration: app.duration || 'SHORT',
     });
     setEditModalOpen(true);
     // Obtener pacientes y dentistas
@@ -121,8 +212,26 @@ export default function DentistAppointmentsPage() {
 
   const handleEditSave = async () => {
     if (!editAppointment) return;
+    // Si la hora está ocupada y no ha confirmado, no continuar
+    if (showOverrideWarning && !overrideConfirmed) return;
     setEditLoading(true);
     try {
+      // Si hay override, cancelar la cita anterior
+      if (showOverrideWarning && overrideConfirmed) {
+        // Buscar la cita a cancelar
+        const resOccupied = await fetch(`/api/appointments/occupied?dentistId=${editForm.dentistId}&date=${editForm.date}`);
+        const dataOccupied = await resOccupied.json();
+        const toCancel = appointments.find(a => a.dentistId === editForm.dentistId && a.date.slice(0,10) === editForm.date && a.time === editForm.time && a.status === 'SCHEDULED');
+        if (toCancel) {
+          // Cancelar la cita anterior
+          await fetch(`/api/appointments/${toCancel.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'CANCELLED', justification: overrideJustification || 'Reemplazada por otra cita' })
+          });
+        }
+      }
+      // Guardar la cita editada
       const res = await fetch(`/api/appointments/${editAppointment.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -149,20 +258,16 @@ export default function DentistAppointmentsPage() {
     COMPLETED: t('appointmentStatus.completed'),
   };
 
+  // Filtros robustos: si están vacíos o en 'all', no filtran nada
   const filteredAppointments = appointments.filter(app => {
-    // Filtrar por fecha única
     if (filterDate && app.date.slice(0, 10) !== filterDate) return false;
-    // Filtrar por rango de fechas
     if (filterRange.from && filterRange.to) {
       const appDate = parseISO(app.date);
       if (!isWithinInterval(appDate, { start: parseISO(filterRange.from), end: parseISO(filterRange.to) })) return false;
     }
-    // Filtrar por estado
     if (filterStatus && filterStatus !== 'all' && app.status !== filterStatus) return false;
-    // Filtrar por paciente
     if (filterPatient && filterPatient !== 'all' && app.patientId !== filterPatient) return false;
-    // Filtrar por notas
-    if (filterNotes && !app.notes?.toLowerCase().includes(filterNotes.toLowerCase())) return false;
+    if (filterNotes && filterNotes.trim() && !(app.notes || '').toLowerCase().includes(filterNotes.toLowerCase())) return false;
     return true;
   });
 
@@ -177,6 +282,8 @@ export default function DentistAppointmentsPage() {
     }
   };
 
+  const availableTimeSlots = generateHalfHourSlots();
+
   return (
     <div className="max-w-5xl mx-auto py-8">
       <Card>
@@ -184,6 +291,9 @@ export default function DentistAppointmentsPage() {
           <CardTitle>{t('appointments.manageTitle')}</CardTitle>
         </CardHeader>
         <CardContent>
+          {appointments.length === 0 && (
+            <div className="pt-6 text-center text-muted-foreground">No hay citas encontradas para este dentista.</div>
+          )}
           {/* Filtros */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div>
@@ -265,9 +375,9 @@ export default function DentistAppointmentsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredAppointments.map(app => (
+              {(filteredAppointments || []).map(app => (
                 <TableRow key={app.id}>
-                  <TableCell>{app.patient?.user?.name || '-'}</TableCell>
+                  <TableCell>{app.patient?.user?.name || app.patientId || '-'}</TableCell>
                   <TableCell>{app.serviceName}</TableCell>
                   <TableCell>{format(parseISO(app.date), 'PPP', { locale: typeof locale === 'object' ? locale : undefined })}</TableCell>
                   <TableCell>{app.time}</TableCell>
@@ -285,14 +395,30 @@ export default function DentistAppointmentsPage() {
                           <TooltipContent>{t('appointments.edit')}</TooltipContent>
                         </Tooltip>
                         {app.status === 'PENDING' && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button onClick={() => handleStatus(app.id, 'SCHEDULED')} className="p-1 rounded hover:bg-green-100 focus:outline-none">
+                          <Popover open={approvePopoverId === app.id} onOpenChange={v => { setApprovePopoverId(v ? app.id : null); setApproveDuration(30); }}>
+                            <PopoverTrigger asChild>
+                              <button className="p-1 rounded hover:bg-green-100 focus:outline-none">
                                 <Check className="w-5 h-5 text-green-600" />
                               </button>
-                            </TooltipTrigger>
-                            <TooltipContent>{t('appointments.approve')}</TooltipContent>
-                          </Tooltip>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-56">
+                              <div className="mb-2 font-medium text-sm">{t('appointments.selectDuration')}</div>
+                              <Select value={approveDuration.toString()} onValueChange={v => setApproveDuration(Number(v))}>
+                                <SelectTrigger><SelectValue placeholder={t('appointments.selectDuration')} /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="15">15 min</SelectItem>
+                                  <SelectItem value="30">30 min</SelectItem>
+                                  <SelectItem value="45">45 min</SelectItem>
+                                  <SelectItem value="60">1 hora</SelectItem>
+                                  <SelectItem value="90">1h 30min</SelectItem>
+                                  <SelectItem value="120">2 horas</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <Button className="mt-2 w-full" size="sm" onClick={() => handleApprove(app.id, approveDuration)} disabled={loadingId === app.id + 'SCHEDULED'}>
+                                {loadingId === app.id + 'SCHEDULED' ? <Loader2 className="animate-spin w-4 h-4" /> : t('appointments.approve')}
+                              </Button>
+                            </PopoverContent>
+                          </Popover>
                         )}
                         {app.status !== 'CANCELLED' && app.status !== 'COMPLETED' && (
                           <Tooltip>
@@ -326,7 +452,14 @@ export default function DentistAppointmentsPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium">{t('appointments.editTime')}</label>
-                <Input type="text" name="time" value={editForm.time} onChange={handleEditChange} />
+                <Select name="time" value={editForm.time} onValueChange={v => setEditForm(f => ({ ...f, time: v }))}>
+                  <SelectTrigger><SelectValue placeholder={t('appointmentForm.selectTime')} /></SelectTrigger>
+                  <SelectContent>
+                    {availableTimeSlots.map(slot => (
+                      <SelectItem key={slot} value={slot}>{slot}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium">{t('appointments.editService')}</label>
@@ -373,7 +506,31 @@ export default function DentistAppointmentsPage() {
                   </SelectContent>
                 </Select>
               </div>
+              <div>
+                <label className="block text-sm font-medium">{t('appointments.editDuration')}</label>
+                <Select name="duration" value={editForm.duration || editAppointment.duration || 'SHORT'} onValueChange={v => setEditForm(f => ({ ...f, duration: v }))}>
+                  <SelectTrigger><SelectValue placeholder={t('appointments.selectDuration')} /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="SHORT">{t('appointments.durationShort')}</SelectItem>
+                    <SelectItem value="LONG">{t('appointments.durationLong')}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
+            {showOverrideWarning && !overrideConfirmed && (
+              <div className="col-span-2 bg-yellow-100 border-l-4 border-yellow-500 p-3 rounded my-2">
+                <div className="font-semibold text-yellow-800 mb-1">{t('appointments.overrideWarning')}</div>
+                <div className="text-sm text-yellow-700 mb-2">{t('appointments.overrideWarningDesc')}</div>
+                <label className="block text-sm font-medium mb-1">{t('appointments.cancelJustificationLabel')}</label>
+                <Input type="text" value={overrideJustification} onChange={e => setOverrideJustification(e.target.value)} placeholder={t('appointments.cancelJustificationPlaceholder')} />
+                <Button className="mt-2" size="sm" onClick={() => setOverrideConfirmed(true)} disabled={!overrideJustification || overrideJustification.length < 5}>{t('appointments.overrideConfirm')}</Button>
+              </div>
+            )}
+            {showOverrideWarning && overrideConfirmed && (
+              <div className="col-span-2 bg-green-100 border-l-4 border-green-500 p-3 rounded my-2">
+                <div className="font-semibold text-green-800">{t('appointments.overrideConfirmed')}</div>
+              </div>
+            )}
             <DialogFooter>
               <Button onClick={handleEditSave} disabled={editLoading}>{editLoading ? <Loader2 className="animate-spin w-4 h-4" /> : t('appointments.save')}</Button>
               <Button variant="outline" onClick={closeEditModal}>{t('appointments.cancel')}</Button>
