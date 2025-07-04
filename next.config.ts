@@ -6,9 +6,6 @@ const isProd = process.env.NODE_ENV === 'production';
 
 const nextConfig: NextConfig = {
   /* config options here */
-  typescript: {
-    ignoreBuildErrors: true,
-  },
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -40,3 +37,10 @@ export default withPWA({
     disable: !isProd,
   },
 });
+
+// Opcional: si quieres ignorar errores de TypeScript en build, usa esto en tu package.json o en un archivo separado
+// export const config = {
+//   typescript: {
+//     ignoreBuildErrors: true,
+//   },
+// };
