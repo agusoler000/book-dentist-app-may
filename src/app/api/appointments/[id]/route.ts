@@ -3,7 +3,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import prisma from "@/lib/prisma";
 import { NextResponse, NextRequest } from "next/server";
 
-export async function PATCH(req: NextRequest, context: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, context: any) {
   const { params } = context;
   const session = await getServerSession(authOptions);
   if (!session || (session.user as any).role !== "DENTIST") {
