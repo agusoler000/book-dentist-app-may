@@ -21,7 +21,7 @@ const fontSans = FontSans({
 export default function ClientRootLayout({ children }: { children: React.ReactNode }) {
   const [showPushButton, setShowPushButton] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(false);
-  const [debugToken, setDebugToken] = useState<string | null>(null); // <-- Estado para depuración
+  // const [debugToken, setDebugToken] = useState<string | null>(null); // <-- Eliminar debug
 
   useEffect(() => {
     if (typeof window !== 'undefined' && 'Notification' in window && 'serviceWorker' in navigator) {
@@ -32,9 +32,8 @@ export default function ClientRootLayout({ children }: { children: React.ReactNo
   const handleEnablePush = async () => {
     try {
       const token = await requestFirebaseNotificationPermission();
-      setDebugToken(token || 'NO TOKEN'); // <-- Mostrar token en pantalla
+      // setDebugToken(token || 'NO TOKEN'); // <-- Eliminar debug
       if (token) {
-        console.log('Enviando token al backend...');
         await fetch('/api/save-fcm-token', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -91,24 +90,6 @@ export default function ClientRootLayout({ children }: { children: React.ReactNo
                 >
                   <Bell size={22} style={{ marginRight: 4 }} />
                 </button>
-              )}
-              {debugToken && (
-                <div style={{
-                  position: 'fixed',
-                  bottom: 70,
-                  left: 24,
-                  background: '#fff',
-                  color: '#333',
-                  padding: '8px 12px',
-                  borderRadius: 8,
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.10)',
-                  zIndex: 1001,
-                  fontSize: 12,
-                  maxWidth: 250,
-                  wordBreak: 'break-all'
-                }}>
-                  <b>FCM Token:</b><br />{debugToken}
-                </div>
               )}
               <main className="flex-grow container mx-auto px-4 py-8">{children}</main>
               <Footer />
