@@ -1,9 +1,13 @@
-import path from 'path';
-import withPWA from 'next-pwa';
+const path = require('path');
+const withPWA = require('next-pwa')({
+  dest: 'public',
+  register: true,
+  skipWaiting: true,
+  disable: process.env.NODE_ENV !== 'production',
+});
 
-const isProd = process.env.NODE_ENV === 'production';
-
-const nextConfig = {
+module.exports = withPWA({
+  reactStrictMode: true,
   images: {
     remotePatterns: [
       {
@@ -15,7 +19,10 @@ const nextConfig = {
     ],
     domains: ['images.unsplash.com'],
   },
-  webpack: (config) => {
+  /**
+   * @param {import('webpack').Configuration} config
+   */
+  webpack: (config: any) => {
     config.resolve = config.resolve || {};
     config.resolve.alias = config.resolve.alias || {};
     config.resolve.alias['@'] = path.resolve(__dirname, 'src');
@@ -23,16 +30,5 @@ const nextConfig = {
   },
   eslint: {
     ignoreDuringBuilds: true,
-  },
-  // Otras opciones de Next.js aquí si las tienes
-};
-
-export default withPWA({
-  ...nextConfig,
-  pwa: {
-    dest: 'public',
-    register: true,
-    skipWaiting: true,
-    disable: !isProd,
   },
 });
