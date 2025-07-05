@@ -37,12 +37,13 @@ export async function requestFirebaseNotificationPermission() {
 }
 
 export async function onMessageListener() {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined') return null;
   const messaging = await getFirebaseMessaging();
-  if (!messaging) return;
+  if (!messaging) return null;
   const { onMessage } = await import('firebase/messaging');
-  return new Promise((resolve) => {
-    onMessage(messaging, (payload) => {
+  
+  return new Promise<(() => void) | null>((resolve) => {
+    const unsubscribe = onMessage(messaging, (payload) => {
       console.log('Received foreground message:', payload);
       
       // Verificar que tenemos datos válidos
@@ -85,8 +86,8 @@ export async function onMessageListener() {
           audio.play().catch(err => console.log('Error playing audio:', err));
         }
       }
-
-      resolve(payload);
     });
+
+    resolve(unsubscribe);
   });
 } 

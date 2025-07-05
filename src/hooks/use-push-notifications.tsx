@@ -23,7 +23,7 @@ export function usePushNotifications() {
     setupPushNotifications();
 
     return () => {
-      if (unsubscribe) {
+      if (unsubscribe && typeof unsubscribe === 'function') {
         unsubscribe();
       }
     };
