@@ -19,37 +19,89 @@ function isIosToken(token: string) {
 export async function sendPushNotification(token: string, title: string, body: string) {
   try {
     console.log('Enviando push a token:', token);
+    console.log('Título:', title);
+    console.log('Cuerpo:', body);
+    
+    // Validar que title y body no sean undefined
+    const safeTitle = title || 'COEC Notificación';
+    const safeBody = body || 'Tienes una nueva notificación';
+    
     let message: any;
+    
     if (isIosToken(token)) {
-      // Payload simple para iOS (Safari PWA)
+      // Payload optimizado para iOS (Safari PWA)
       message = {
         token,
         notification: {
-          title,
-          body,
+          title: safeTitle,
+          body: safeBody,
         },
         webpush: {
           notification: {
+            title: safeTitle,
+            body: safeBody,
             icon: '/icons/icon-192x192.png',
+            badge: '/icons/icon-192x192.png',
+            tag: 'coec-notification',
+            requireInteraction: true,
+            data: {
+              url: '/',
+              timestamp: Date.now().toString()
+            }
           },
+          fcm_options: {
+            link: '/'
+          }
         },
+        data: {
+          title: safeTitle,
+          body: safeBody,
+          url: '/',
+          timestamp: Date.now().toString()
+        }
       };
     } else {
-      // Payload completo para Android y otros
+      // Payload optimizado para Android y otros navegadores
       message = {
         token,
         notification: {
-          title,
-          body,
+          title: safeTitle,
+          body: safeBody,
         },
         webpush: {
           notification: {
+            title: safeTitle,
+            body: safeBody,
             icon: '/icons/icon-192x192.png',
+            badge: '/icons/icon-192x192.png',
+            tag: 'coec-notification',
+            requireInteraction: true,
             sound: '/notification.mp3',
+            data: {
+              url: '/',
+              timestamp: Date.now().toString()
+            },
+            actions: [
+              {
+                action: 'open',
+                title: 'Abrir',
+                icon: '/icons/icon-192x192.png'
+              }
+            ]
           },
+          fcm_options: {
+            link: '/'
+          }
         },
+        data: {
+          title: safeTitle,
+          body: safeBody,
+          url: '/',
+          timestamp: Date.now().toString()
+        }
       };
     }
+    
     const res = await admin.messaging().send(message);
     console.log('Push enviado correctamente:', res);
     return res;

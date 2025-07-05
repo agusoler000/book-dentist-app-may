@@ -43,6 +43,49 @@ export async function onMessageListener() {
   const { onMessage } = await import('firebase/messaging');
   return new Promise((resolve) => {
     onMessage(messaging, (payload) => {
+      console.log('Received foreground message:', payload);
+      
+      // Verificar que tenemos datos válidos
+      if (!payload.notification || !payload.notification.title) {
+        console.log('Invalid notification payload:', payload);
+        return;
+      }
+
+      // Evitar duplicados usando el tag
+      const notificationTag = 'coec-notification';
+      const existingNotifications = document.querySelectorAll(`[data-notification-tag="${notificationTag}"]`);
+      if (existingNotifications.length > 0) {
+        console.log('Notification already exists, skipping...');
+        return;
+      }
+
+      // Crear notificación del navegador
+      if ('Notification' in window && Notification.permission === 'granted') {
+        const notification = new Notification(payload.notification.title, {
+          body: payload.notification.body || '',
+          icon: '/icons/icon-192x192.png',
+          badge: '/icons/icon-192x192.png',
+          tag: notificationTag,
+          requireInteraction: true,
+          data: payload.data || {}
+        });
+
+        // Manejar clic en la notificación
+        notification.addEventListener('click', () => {
+          notification.close();
+          window.focus();
+          if (payload.data?.url) {
+            window.location.href = payload.data.url;
+          }
+        });
+
+        // Reproducir sonido
+        if (typeof window !== 'undefined') {
+          const audio = new Audio('/notification.mp3');
+          audio.play().catch(err => console.log('Error playing audio:', err));
+        }
+      }
+
       resolve(payload);
     });
   });
