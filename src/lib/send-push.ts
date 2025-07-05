@@ -26,81 +26,60 @@ export async function sendPushNotification(token: string, title: string, body: s
     const safeTitle = title || 'COEC Notificación';
     const safeBody = body || 'Tienes una nueva notificación';
     
-    let message: any;
-    
-    if (isIosToken(token)) {
-      // Payload optimizado para iOS (Safari PWA)
-      message = {
-        token,
+    // Payload simplificado que funciona mejor en Android
+    const message = {
+      token,
+      notification: {
+        title: safeTitle,
+        body: safeBody,
+      },
+      webpush: {
         notification: {
           title: safeTitle,
           body: safeBody,
-        },
-        webpush: {
-          notification: {
-            title: safeTitle,
-            body: safeBody,
-            icon: '/icons/icon-192x192.png',
-            badge: '/icons/icon-192x192.png',
-            tag: 'coec-notification',
-            requireInteraction: true,
-            data: {
-              url: '/',
-              timestamp: Date.now().toString()
-            }
-          },
-          fcm_options: {
-            link: '/'
+          icon: '/icons/icon-192x192.png',
+          badge: '/icons/icon-192x192.png',
+          tag: 'coec-notification',
+          requireInteraction: false,
+          data: {
+            url: '/',
+            timestamp: Date.now().toString()
           }
         },
-        data: {
-          title: safeTitle,
-          body: safeBody,
-          url: '/',
-          timestamp: Date.now().toString()
+        fcm_options: {
+          link: '/'
         }
-      };
-    } else {
-      // Payload optimizado para Android y otros navegadores
-      message = {
-        token,
+      },
+      data: {
+        title: safeTitle,
+        body: safeBody,
+        url: '/',
+        timestamp: Date.now().toString()
+      },
+      android: {
         notification: {
           title: safeTitle,
           body: safeBody,
-        },
-        webpush: {
-          notification: {
-            title: safeTitle,
-            body: safeBody,
-            icon: '/icons/icon-192x192.png',
-            badge: '/icons/icon-192x192.png',
-            tag: 'coec-notification',
-            requireInteraction: true,
-            sound: '/notification.mp3',
-            data: {
-              url: '/',
-              timestamp: Date.now().toString()
+          icon: '/icons/icon-192x192.png',
+          color: '#0ea5e9',
+          sound: 'default',
+          priority: 'high' as const,
+          channel_id: 'coec-notifications'
+        }
+      },
+      apns: {
+        payload: {
+          aps: {
+            alert: {
+              title: safeTitle,
+              body: safeBody
             },
-            actions: [
-              {
-                action: 'open',
-                title: 'Abrir',
-                icon: '/icons/icon-192x192.png'
-              }
-            ]
-          },
-          fcm_options: {
-            link: '/'
+            sound: 'default',
+            badge: 1
           }
-        },
-        data: {
-          title: safeTitle,
-          body: safeBody,
-          url: '/',
-          timestamp: Date.now().toString()
         }
-      };
-    }
+      }
+    };
     
     const res = await admin.messaging().send(message);
     console.log('Push enviado correctamente:', res);

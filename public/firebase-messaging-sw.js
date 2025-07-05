@@ -11,9 +11,6 @@ firebase.initializeApp({
 
 const messaging = firebase.messaging();
 
-// Cache para evitar duplicados
-const notificationCache = new Set();
-
 messaging.onBackgroundMessage(function(payload) {
   console.log('Received background message:', payload);
   
@@ -23,44 +20,17 @@ messaging.onBackgroundMessage(function(payload) {
     return;
   }
 
-  // Crear un identificador único para la notificación
-  const notificationId = `${payload.notification.title}-${payload.notification.body}-${Date.now()}`;
-  
-  // Evitar duplicados
-  if (notificationCache.has(notificationId)) {
-    console.log('Duplicate notification, skipping...');
-    return;
-  }
-  
-  notificationCache.add(notificationId);
-  
-  // Limpiar cache después de 5 segundos
-  setTimeout(() => {
-    notificationCache.delete(notificationId);
-  }, 5000);
-
+  // Configuración básica para Android
   const notificationOptions = {
     body: payload.notification.body || '',
     icon: '/icons/icon-192x192.png',
     badge: '/icons/icon-192x192.png',
-    tag: 'coec-notification', // Evita duplicados
-    requireInteraction: true, // Mantiene la notificación visible
+    tag: 'coec-notification',
+    requireInteraction: false,
     data: payload.data || {},
-    silent: false, // Asegura que se reproduzca el sonido
-    vibrate: [200, 100, 200], // Vibración para Android
-    actions: [
-      {
-        action: 'open',
-        title: 'Abrir',
-        icon: '/icons/icon-192x192.png'
-      }
-    ]
+    silent: false,
+    vibrate: [200, 100, 200]
   };
-
-  // Agregar sonido solo si está disponible
-  if (payload.notification.sound) {
-    notificationOptions.sound = payload.notification.sound;
-  }
 
   return self.registration.showNotification(
     payload.notification.title,
